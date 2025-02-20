@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+    <title>Peer-to-Peer Chatbox</title>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body{
+                font-family: tahoma;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+            }
+            #login, #chatboxUI{
+                padding: 2rem;
+                width: 100%;
+                max-width: 40rem;
+                margin: auto;
+                text-align: center;
+                border-radius: .223rem;
+                border: 0.2rem solid #000;
+                box-sizing: border-box;
+            }
+            input, textarea{
+                width: 100%;
+                padding: .223rem;
+                margin-bottom: 1rem;
+                border-radius: .30rem;
+                border: 1px solid #000;
+                background-color: #FFF;
+                font-family: tahoma;
+            }
+            input[type="button"]{
+                width: 100%;
+                cursor: pointer;
+            }
+            input[type="button"]:hover{
+                background-color: #F0F0F0;
+            }
+            #messages{
+                min-height: 10rem;
+                border-radius: 0.1rem;
+                border: 2px solid #000;
+                list-style: none;
+                text-align: left;
+                overflow-y: scroll;
+                max-height: 15rem;
+                margin-bottom: 1rem;
+                padding-left: 0;
+            }
+            li{
+                word-wrap: break-word;
+            }
+            .userMessage{
+                color: #EC1414;
+                align-self: flex-end;
+                text-align: right;
+            }
+            .otherMessage{
+                background-color: #FFF;
+                text-align: left;
+                align-self: flex-start;
+            }
+            textarea{
+                resize: none;
+                font-size: 1rem;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="login">
+            <h2>Peer-to-Peer Chatbox Login</h2>
+            <input type="text" id="username" placeholder="Chat Username">
+            <input type="text" id="userIp" placeholder="IP not Detected" disabled>
+            <input type="button" value="Join the chat">
+            <div id="login-error"></div>
+        </div>
+        <div id="chatboxUI" style="display: none;">
+            <h2>Peer-to-Peer Chatbox Interface</h2>
+            <ul id="messages"></ul>
+            <div>
+                <textarea id="userMessage" placeholder="Enter something here 😀 (e.g. How is everybody's day?)&NewLine;Send the message with shift+enter or the &OpenCurlyDoubleQuote;Send Message&CloseCurlyDoubleQuote; button below" rows="5"cols="80"></textarea>
+                <input type="button" id="sendMessage" value="Send Message" style="width: 20%;">
+            </div>
+        </div>
+        <script type="module">
+            let loginPage=document.getElementById("login");
+            let chatPage=document.getElementById("chatboxUI");
+            let usernameInput=document.getElementById("username");
+            let userIP=document.getElementById("userIp");
+            let messagesList=document.getElementById("messages");
+            let userMessage=document.getElementById("userMessage");
+            let localIP="localhost";
+            let defaultPort=8191;
+            let socket=null;
+            let currentUser="";
+            fetch('/get-ip').then(response=>response.json()).then(data=>{localIP=data.ip; userIP.value=`Your current IP is: ${localIP}`;}).catch(err=>{userIP.value="Unable to fetch IP";});
+            function getCurrentTime(){
+                let currentTime=new Date();
+                let hours=currentTime.getHours().toString().padStart(2, "0");
+                let minutes=currentTime.getMinutes().toString().padStart(2, "0");
+                let seconds=currentTime.getSeconds().toString().padStart(2, "0");
+                return `${hours}:${minutes}:${seconds}`;
+            }
+            function loggingIn(){
+                let username=usernameInput.value.trim();
+                if (!username){
+                    document.getElementById("login-error").textContent="Please enter your username";
+                    return;
+                }
+                currentUser=username;
+                loginPage.style.display="none";
+                chatPage.style.display="block";
+                socket=new WebSocket(`ws://${localIP}:${defaultPort}`);
+                socket.onopen=()=>{
+                    console.log("Connected to WebSocket server");
+                };
+                socket.onmessage=(event)=>{
+                    let data=JSON.parse(event.data);
+                    let newMessage=document.createElement("li");
+                    let messageTime=getCurrentTime();
+                    newMessage.textContent=`${data.username} (${messageTime}): ${data.message}`;
+                    if (data.username==currentUser){
+                        newMessage.classList.add("userMessage");
+                    }
+                    else{
+                        newMessage.classList.add("otherMessage");
+                    }
+                    messagesList.appendChild(newMessage);
+                    messagesList.scrollTop=messagesList.scrollHeight;
+                };
+                socket.onerror=(error)=>{
+                    console.error("WebSocket error:", error);
+                };
+                socket.onclose=()=>{
+                    console.log("WebSocket connection closed");
+                };
+            }
+            usernameInput.addEventListener("keyup", (event)=>{
+                if (event.key=="Enter"){
+                    loggingIn();
+                }
+            })
+            document.querySelector('input[type="button"]').addEventListener('click', loggingIn);
+            function sendMessage(){
+                let message=userMessage.value.trim();
+                let username=usernameInput.value.trim();
+                if (message&&socket&&socket.readyState==WebSocket.OPEN) {
+                    let data=JSON.stringify({username, message});
+                    socket.send(data);
+                    userMessage.value="";
+                }
+            }
+            userMessage.addEventListener("keypress", (event)=>{
+                if (event.key=="Enter"&&event.shiftKey){
+                    sendMessage();
+                }
+            });
+            document.getElementById("sendMessage").onclick=sendMessage;
+        </script>
+    </body>
+</html>
