@@ -1,5 +1,5 @@
 {
-    "name": "Local Server Chat",
+    "name": "local_server_chat",
     "version": "1.0.0",
     "type": "module",
     "dependencies":{
