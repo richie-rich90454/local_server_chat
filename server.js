@@ -5,6 +5,7 @@ import path from "path";
 import {fileURLToPath} from "url";
 const __filename=fileURLToPath(import.meta.url);
 const __dirname=path.dirname(__filename);
+
 const getLocalIP=()=>{
     const nets=networkInterfaces();
     for (const iface of Object.values(nets)){
@@ -20,6 +21,7 @@ const localIP=getLocalIP();
 const portWS=8191;
 const portUI=2047;
 const app=express();
+app.use(express.static("public"));
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/", (req, res)=>{
     res.sendFile(path.join(__dirname, "public", "index.html"));
