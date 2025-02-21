@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
-    <title>Peer-to-Peer Chatbox</title>
+    <title>Local Server Chat</title>
     <head>
         <meta charset="UTF-8">
         <style>
@@ -13,7 +13,7 @@
                 align-items: center;
                 height: 100vh;
             }
-            #login, #chatboxUI{
+            #login, #chatUI{
                 padding: 2rem;
                 width: 100%;
                 max-width: 40rem;
@@ -71,14 +71,14 @@
     </head>
     <body>
         <div id="login">
-            <h2>Locally Hosted Chatbox Login</h2>
+            <h2>Locally Hosted Chat Application Login</h2>
             <input type="text" id="username" placeholder="Chat Username">
             <input type="text" id="userIp" placeholder="IP not Detected" disabled>
             <input type="button" value="Join the chat">
             <div id="login-error"></div>
         </div>
-        <div id="chatboxUI" style="display: none;">
-            <h2>Locally Hosted Chatbox Interface</h2>
+        <div id="chatUI" style="display: none;">
+            <h2>Locally Hosted Chat Application Interface</h2>
             <ul id="messages"></ul>
             <div>
                 <textarea id="userMessage" placeholder="Enter something here 😀 (e.g. How is everybody's day?)&NewLine;Send the message with shift+enter or the &OpenCurlyDoubleQuote;Send Message&CloseCurlyDoubleQuote; button below" rows="5"cols="80"></textarea>
@@ -87,7 +87,7 @@
         </div>
         <script type="module">
             let loginPage=document.getElementById("login");
-            let chatPage=document.getElementById("chatboxUI");
+            let chatPage=document.getElementById("chatUI");
             let usernameInput=document.getElementById("username");
             let userIP=document.getElementById("userIp");
             let messagesList=document.getElementById("messages");
