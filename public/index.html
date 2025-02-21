@@ -92,11 +92,11 @@
             let userIP=document.getElementById("userIp");
             let messagesList=document.getElementById("messages");
             let userMessage=document.getElementById("userMessage");
-            let localIP="localhost";
+            let localIP=window.location.hostname;
             let defaultPort=8191;
             let socket=null;
             let currentUser="";
-            fetch('/get-ip').then(response=>response.json()).then(data=>{localIP=data.ip; userIP.value=`Your current IP is: ${localIP}`;}).catch(err=>{userIP.value="Unable to fetch IP";});
+            userIP.value=`Your local IP is: ${localIP}`;
             function getCurrentTime(){
                 let currentTime=new Date();
                 let hours=currentTime.getHours().toString().padStart(2, "0");
@@ -116,13 +116,14 @@
                 socket=new WebSocket(`ws://${localIP}:${defaultPort}`);
                 socket.onopen=()=>{
                     console.log("Connected to WebSocket server");
+                    socket.send(JSON.stringify({type: "join", username, ip: localIP}));
                 };
                 socket.onmessage=(event)=>{
                     let data=JSON.parse(event.data);
                     let newMessage=document.createElement("li");
                     let messageTime=getCurrentTime();
                     let formattedMessage=data.message.replace(/\n/g, "<br>");
-                    newMessage.innerHTML=`${data.username} (${messageTime}): ${formattedMessage}`;
+                    newMessage.innerHTML=`${data.username} [${data.ip}] (${messageTime}): ${formattedMessage}`;
                     if (data.username==currentUser){
                         newMessage.classList.add("userMessage");
                     }
@@ -144,12 +145,12 @@
                     loggingIn();
                 }
             })
-            document.querySelector('input[type="button"]').addEventListener('click', loggingIn);
+            document.querySelector('input[type="button"]').addEventListener("click", loggingIn);
             function sendMessage(){
                 let message=userMessage.value.trim();
                 let username=usernameInput.value.trim();
                 if (message&&socket&&socket.readyState==WebSocket.OPEN) {
-                    let data=JSON.stringify({username, message});
+                    let data=JSON.stringify({username, message ,ip: localIP});
                     socket.send(data);
                     userMessage.value="";
                 }
