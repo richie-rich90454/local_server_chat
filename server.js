@@ -1,5 +1,5 @@
-import WebSocket, { WebSocketServer } from 'ws';
-import { networkInterfaces } from 'os';
+import WebSocket, {WebSocketServer} from 'ws';
+import {networkInterfaces} from 'os';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -9,7 +9,7 @@ const getLocalIP=()=>{
     const nets=networkInterfaces();
     for (const iface of Object.values(nets)){
         for (const net of iface){
-            if (net.family=="IPv4"&& !net.internal) {
+            if (net.family=="IPv4"&& !net.internal){
                 return net.address;
             }
         }
@@ -25,12 +25,12 @@ app.get("/", (req, res)=>{
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 app.get("/get-ip", (req, res)=>{
-    res.json({ ip: localIP });
+    res.json({ip: localIP});
 });
 app.listen(portUI, ()=>{
     console.log(`UI on http://${localIP}:${portUI}`);
 });
-const wsServer=new WebSocketServer({ port: portWS, host: '0.0.0.0' });
+const wsServer=new WebSocketServer({port: portWS, host: '0.0.0.0'});
 let clients=[];
 wsServer.on('connection', (ws)=>{
     clients.push(ws);
