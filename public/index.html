@@ -121,7 +121,8 @@
                     let data=JSON.parse(event.data);
                     let newMessage=document.createElement("li");
                     let messageTime=getCurrentTime();
-                    newMessage.textContent=`${data.username} (${messageTime}): ${data.message}`;
+                    let formattedMessage=data.message.replace(/\n/g, "<br>");
+                    newMessage.innerHTML=`${data.username} (${messageTime}): ${formattedMessage}`;
                     if (data.username==currentUser){
                         newMessage.classList.add("userMessage");
                     }
