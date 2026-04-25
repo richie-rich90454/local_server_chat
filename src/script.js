@@ -38,23 +38,18 @@ document.addEventListener("DOMContentLoaded",()=>{
 	}
 	function escapeHtml(str){
 		return str.replace(/[&<>]/g, function(m){
-			if(m=='&') return '&amp;';
-			if(m=='<') return '&lt;';
-			if(m=='>') return '&gt;';
+			if(m=="&") return "&amp;";
+			if(m=="<") return "&lt;";
+			if(m==">") return "&gt;";
 			return m;
 		});
 	}
 	function formatMarkdown(text){
-		// escape HTML first
 		let escaped=escapeHtml(text);
-		// code: `code`
-		escaped=escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
-		// bold: **bold**
-		escaped=escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-		// italic: *italic*
-		escaped=escaped.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-		// line breaks
-		return escaped.replace(/\n/g, '<br>');
+		escaped=escaped.replace(/`([^`]+)`/g, "<code>$1</code>");
+		escaped=escaped.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+		escaped=escaped.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+		return escaped.replace(/\n/g, "<br>");
 	}
 	function scrollToBottom(){
 		messagesList.scrollTop=messagesList.scrollHeight;
@@ -72,7 +67,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 	}
 	async function fetchAndDisplayIP(){
 		try{
-			let response=await fetch('/get-client-ip');
+			let response=await fetch("/get-client-ip");
 			let data=await response.json();
 			if(data.ip&&data.ip!="::1"&&data.ip!="127.0.0.1"){
 				clientRealIP=data.ip;
@@ -156,6 +151,23 @@ document.addEventListener("DOMContentLoaded",()=>{
 		if(socket&&socket.readyState===WebSocket.OPEN){
 			socket.send(JSON.stringify({type:"typing", username:currentUser, typing:true}));
 		}
+	}
+	function wrapSelection(textarea, before, after){
+		let start=textarea.selectionStart;
+		let end=textarea.selectionEnd;
+		let text=textarea.value;
+		let selectedText=text.substring(start,end);
+		let newText=text.substring(0,start)+before+selectedText+after+text.substring(end);
+		textarea.value=newText;
+		if(selectedText.length==0){
+			textarea.selectionStart=start+before.length;
+			textarea.selectionEnd=start+before.length;
+		}
+		else{
+			textarea.selectionStart=start;
+			textarea.selectionEnd=end+before.length+after.length;
+		}
+		textarea.focus();
 	}
 	async function loggingIn(){
 		let username=usernameInput.value.trim();
@@ -337,6 +349,20 @@ document.addEventListener("DOMContentLoaded",()=>{
 			}
 		});
 	}
+	userMessage.addEventListener("keydown",(e)=>{
+		if(e.ctrlKey&&e.key==="b"){
+			e.preventDefault();
+			wrapSelection(userMessage,"**","**");
+		}
+		else if(e.ctrlKey&&e.key==="i"){
+			e.preventDefault();
+			wrapSelection(userMessage,"*","*");
+		}
+		else if(e.ctrlKey&&e.key==="m"){
+			e.preventDefault();
+			wrapSelection(userMessage,"`","`");
+		}
+	});
 	function sendMessageContent(message){
 		if(!socket||socket.readyState!=WebSocket.OPEN){
 			showChatError("Connection lost. Please refresh.");
@@ -370,7 +396,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			return;
 		}
 		if(message=="/help"){
-			let helpText="Available commands:\n/users - list online users\n/msg \"username\" message - send private message\n/help - show this help";
+			let helpText="Available commands:\n/users - list online users\n/msg \"username\" message - send private message\n/help - show this help\n\nKeyboard shortcuts:\nCtrl+B - bold text\nCtrl+I - italic text\nCtrl+M - inline code";
 			let fakeEvent={data:JSON.stringify({type:"system",message:helpText})};
 			socket.onmessage(fakeEvent);
 			userMessage.value="";
