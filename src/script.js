@@ -12,6 +12,22 @@ document.addEventListener("DOMContentLoaded",()=>{
 	let autoScroll=true;
 	let scrollBtn=document.getElementById("scrollToBottomBtn");
 	let joinFailed=false;
+	let chatErrorDiv=document.getElementById("chatError");
+	function showChatError(msg){
+		if(!chatErrorDiv) return;
+		chatErrorDiv.textContent=msg;
+		chatErrorDiv.classList.add("show");
+		setTimeout(()=>{
+			chatErrorDiv.classList.remove("show");
+		},3000);
+	}
+	function shakeElement(el){
+		if(!el) return;
+		el.classList.add("shake");
+		setTimeout(()=>{
+			el.classList.remove("shake");
+		},400);
+	}
 	function getCurrentTime(){
 		let now=new Date();
 		return `${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}:${now.getSeconds().toString().padStart(2,"0")}`;
@@ -109,6 +125,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 		let username=usernameInput.value.trim();
 		if(!username){
 			document.getElementById("login-error").textContent="Please enter your username";
+			shakeElement(usernameInput);
 			return;
 		}
 		currentUser=username;
@@ -141,6 +158,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 				if(data.message&&data.message.includes("already taken")){
 					joinFailed=true;
 					document.getElementById("login-error").textContent=data.message;
+					shakeElement(usernameInput);
 					socket.close();
 					return;
 				}
@@ -222,7 +240,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 	function exportChatLog(){
 		let messages=messagesList.children;
 		if(messages.length==0){
-			alert("No messages to export.");
+			showChatError("No messages to export.");
 			return;
 		}
 		let lines=[];
@@ -231,7 +249,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			if(text.trim()) lines.push(text);
 		}
 		if(lines.length==0){
-			alert("No messages to export.");
+			showChatError("No messages to export.");
 			return;
 		}
 		let content=lines.join("\n");
@@ -250,8 +268,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 		let message=userMessage.value.trim();
 		if(!message) return;
 		if(!socket||socket.readyState!=WebSocket.OPEN){
-			console.error("WebSocket not open");
-			alert("Connection lost. Please refresh.");
+			showChatError("Connection lost. Please refresh.");
+			shakeElement(userMessage);
 			return;
 		}
 		if(message=="/users"){

@@ -161,6 +161,7 @@ li:last-child{
 	color:var(--error-color);
 	margin-top:0.5rem;
 	font-size:0.85rem;
+	min-height:2rem;
 }
 #chatHeader{
 	display:flex;
@@ -248,6 +249,42 @@ body[data-theme="dark"] #sunIcon{
 }
 #scrollToBottomBtn:hover{
 	background-color:var(--scroll-btn-hover);
+}
+.chat-error{
+	position:fixed;
+	bottom:80px;
+	left:50%;
+	transform:translateX(-50%);
+	background-color:var(--error-color);
+	color:#FFF;
+	padding:0.5rem 1rem;
+	border-radius:.3rem;
+	font-size:0.85rem;
+	z-index:20;
+	opacity:0;
+	transition:opacity 0.2s;
+	pointer-events:none;
+	white-space:nowrap;
+}
+.chat-error.show{
+	opacity:1;
+}
+.shake{
+	animation:shake 0.4s ease-in-out;
+}
+@keyframes shake{
+	0%{
+		transform:translateX(0);
+	}
+	25%{
+		transform:translateX(-5px);
+	}
+	75%{
+		transform:translateX(5px);
+	}
+	100%{
+		transform:translateX(0);
+	}
 }
 @media (max-width:768px){
 	#login,#chatUI{
