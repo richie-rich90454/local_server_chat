@@ -12,10 +12,10 @@ body{
 #login,#chatUI{
 	padding:2rem;
 	width:100%;
-	max-width:50rem;
-	margin:auto;
+	max-width:70rem;
+	margin:0 auto;
 	text-align:center;
-	border-radius:.223rem;
+	border-radius:.3rem;
 	border:0.2rem solid #000;
 	box-sizing:border-box;
 	background:#FFF;
@@ -24,7 +24,7 @@ input,textarea{
 	width:100%;
 	padding:.5rem .5rem;
 	margin-bottom:1rem;
-	border-radius:.30rem;
+	border-radius:.3rem;
 	border:1px solid #000;
 	background-color:#FFF;
 	font-family:"Noto Sans",sans-serif;
@@ -55,7 +55,7 @@ textarea{
 }
 #messages{
 	min-height:10rem;
-	border-radius:0.1rem;
+	border-radius:0.2rem;
 	border:2px solid #000;
 	list-style:none;
 	text-align:left;
@@ -109,10 +109,6 @@ li:last-child{
 	#login,#chatUI{
 		padding:1.5rem;
 		max-width:95%;
-	}
-	input,textarea,input[type="button"]{
-		padding:0.5rem 0.5rem;
-		font-size:16px;
 	}
 	#genUsername{
 		font-size:0.75rem;
