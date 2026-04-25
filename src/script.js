@@ -169,6 +169,38 @@ document.addEventListener("DOMContentLoaded",()=>{
 		}
 		textarea.focus();
 	}
+	async function convertToWebP(file){
+		return new Promise((resolve,reject)=>{
+			if(!file.type.startsWith("image/")){
+				reject("Not an image");
+				return;
+			}
+			let img=new Image();
+			img.onload=()=>{
+				let canvas=document.createElement("canvas");
+				let maxWidth=800;
+				let maxHeight=800;
+				let width=img.width;
+				let height=img.height;
+				if(width>maxWidth){
+					height=height*maxWidth/width;
+					width=maxWidth;
+				}
+				if(height>maxHeight){
+					width=width*maxHeight/height;
+					height=maxHeight;
+				}
+				canvas.width=width;
+				canvas.height=height;
+				let ctx=canvas.getContext("2d");
+				ctx.drawImage(img,0,0,width,height);
+				let webpData=canvas.toDataURL("image/webp",0.7);
+				resolve(webpData);
+			};
+			img.onerror=()=>reject("Image load failed");
+			img.src=URL.createObjectURL(file);
+		});
+	}
 	async function loggingIn(){
 		let username=usernameInput.value.trim();
 		if(!username){
@@ -254,7 +286,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 				let newMessage=document.createElement("li");
 				let messageTime=getCurrentTime();
 				let displayIP=data.ip||clientRealIP||"Unknown";
-				let imgHtml=`<img src="${data.image}" style="max-width:100%; max-height:200px; border-radius:8px; margin-top:4px; cursor:pointer;" alt="shared image" onclick="window.open(this.src,"_blank")">`;
+				let imgHtml=`<img src="${escapeHtml(data.image)}" style="max-width:100%; max-height:200px; border-radius:8px; margin-top:4px; cursor:pointer;" alt="shared image" onclick="window.open(this.src,"_blank")">`;
 				newMessage.innerHTML=`${escapeHtml(data.username)} [${displayIP}] (${messageTime}):<br> ${imgHtml}`;
 				newMessage.style.whiteSpace="normal";
 				if(data.username==currentUser){
@@ -425,7 +457,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			return;
 		}
 		if(message=="/help"){
-			let helpText="Available commands:\n/users - list online users\n/msg \"username\" message - send private message\n/help - show this help\n\nKeyboard shortcuts:\nCtrl+B - bold text\nCtrl+I - italic text\nCtrl+M - inline code\n\nDrag & drop an image (≤1MB) to share it.";
+			let helpText="Available commands:\n/users - list online users\n/msg \"username\" message - send private message\n/help - show this help\n\nKeyboard shortcuts:\nCtrl+B - bold text\nCtrl+I - italic text\nCtrl+M - inline code\n\nDrag & drop an image (≤1MB) to share it (converted to WebP).";
 			let fakeEvent={data:JSON.stringify({type:"system",message:helpText})};
 			socket.onmessage(fakeEvent);
 			userMessage.value="";
@@ -468,12 +500,13 @@ document.addEventListener("DOMContentLoaded",()=>{
 			showChatError("File too large (max 1 MB).");
 			return;
 		}
-		let reader=new FileReader();
-		reader.onload=function(ev){
-			let base64=ev.target.result;
-			sendMessageContent(null, true, base64);
-		};
-		reader.readAsDataURL(file);
+		try{
+			let webpData=await convertToWebP(file);
+			sendMessageContent(null, true, webpData);
+		}
+		catch(err){
+			showChatError("Image conversion failed: "+err);
+		}
 	});
 	window.addEventListener("beforeunload",(e)=>{
 		if(chatPage.style.display=="block"){
