@@ -34,7 +34,7 @@ app.get("/get-client-ip", (req, res)=>{
 app.listen(portUI, ()=>{
     console.log(`UI on http://${localIP}:${portUI}`);
 });
-const wsServer=new WebSocketServer({port: portWS, host: "0.0.0.0"});
+const wsServer=new WebSocketServer({port: portWS, host: "::"});
 let clients=[];
 wsServer.on("connection", (ws,req)=>{
     clients.push(ws);
