@@ -76,7 +76,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			let messageTime=getCurrentTime();
 			let formattedMessage=(data.message||"").replace(/\n/g,"<br>");
 			let displayIP=data.ip||clientRealIP||"Unknown";
-			newMessage.innerHTML=`${data.username} [${displayIP}] (${messageTime}): ${formattedMessage}`;
+			newMessage.textContent=`${data.username} [${displayIP}] (${messageTime}): ${formattedMessage}`;
 			if(data.username===currentUser){
 				newMessage.classList.add("userMessage");
 			}
