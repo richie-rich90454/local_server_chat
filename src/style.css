@@ -105,6 +105,25 @@ li:last-child{
 	margin-top:0.5rem;
 	font-size:0.85rem;
 }
+#scrollToBottomBtn{
+	display:none;
+	position:fixed;
+	bottom:20px;
+	right:20px;
+	background-color:#000;
+	color:#FFF;
+	border:none;
+	border-radius:50%;
+	width:44px;
+	height:44px;
+	font-size:24px;
+	cursor:pointer;
+	box-shadow:0 2px 6px rgba(0,0,0,0.3);
+	transition:opacity 0.2s;
+}
+#scrollToBottomBtn:hover{
+	background-color:#333;
+}
 @media (max-width:768px){
 	#login,#chatUI{
 		padding:1.5rem;
@@ -139,15 +158,48 @@ li:last-child{
 		font-size:16px;
 	}
 }
-#chatUI h2{
-    font-size: 1.5rem;
-}
-#exportChat{
-    background-color: #f0f0f0;
-    border: 1px solid #000;
-    border-radius: .3rem;
-    cursor: pointer;
-}
-#exportChat:hover{
-    background-color: #e0e0e0;
+@media (prefers-color-scheme: dark){
+	body,#login,#chatUI,input,textarea,#messages,li{
+		background-color:#121212;
+		border-color:#444;
+		color:#E0E0E0;
+	}
+	#login,#chatUI{
+		border:0.2rem solid #666;
+	}
+	input,textarea{
+		background-color:#1E1E1E;
+		border:1px solid #555;
+		color:#EEE;
+	}
+	input[type="button"]{
+		background-color:#2C2C2C;
+		border-color:#666;
+		color:#EEE;
+	}
+	input[type="button"]:hover{
+		background-color:#3A3A3A;
+	}
+	#messages{
+		border-color:#555;
+	}
+	li{
+		border-bottom-color:#333;
+	}
+	.userMessage{
+		color:#FF6B6B;
+	}
+	.otherMessage{
+		color:#BBB;
+	}
+	#login-error{
+		color:#FF8888;
+	}
+	#genUsername{
+		background-color:#2C2C2C;
+	}
+	#scrollToBottomBtn{
+		background-color:#333;
+		color:#FFF;
+	}
 }

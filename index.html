@@ -27,18 +27,18 @@
 			<input type="button" id="joinChat" value="Join the chat">
 			<div id="login-error"></div>
 		</div>
-        <div id="chatUI" style="display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2 style="margin: 0;">Locally Hosted Chat Application Interface</h2>
-                <input type="button" id="exportChat" value="Export Chat" style="width: auto; padding: 0.3rem 0.8rem; margin: 0;">
-            </div>
-            <ul id="messages"></ul>
-            <div>
-                <textarea id="userMessage" placeholder="Enter something here 😀 (e.g. How is everybody's day?)&NewLine;Send the message with shift+enter or the &quot;Send Message&quot; button below" rows="5" cols="80"></textarea>
-                <input type="button" id="sendMessage" value="Send Message">
-            </div>
-        </div>
-		<script type="module" src="src/script.js">
-		</script>
+		<div id="chatUI" style="display: none;">
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+				<h2 style="margin: 0;">Locally Hosted Chat Application Interface <span id="onlineCount" style="font-size:0.8rem;">(0 online)</span></h2>
+				<input type="button" id="exportChat" value="Export Chat" style="width: auto; padding: 0.3rem 0.8rem; margin: 0;">
+			</div>
+			<ul id="messages"></ul>
+			<div>
+				<textarea id="userMessage" placeholder="Enter something here 😀 (e.g. How is everybody's day?)&NewLine;Send the message with shift+enter or the &quot;Send Message&quot; button below" rows="5" cols="80"></textarea>
+				<input type="button" id="sendMessage" value="Send Message">
+			</div>
+		</div>
+		<button id="scrollToBottomBtn" style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 100; background: #000; color: #FFF; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 20px; cursor: pointer;">↓</button>
+		<script type="module" src="src/script.js"></script>
 	</body>
 </html>
