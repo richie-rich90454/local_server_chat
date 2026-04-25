@@ -38,7 +38,7 @@ const wsServer=new WebSocketServer({port: portWS, host: "0.0.0.0"});
 let clients=[];
 wsServer.on("connection", (ws,req)=>{
     clients.push(ws);
-    console.log("New connection established");
+    console.log("New connection established"+". Number of client(s)"+clients.length);
     let clientIP=req.headers["x-forwarded-for"]||req.socket.remoteAddress;
     if(clientIP&&clientIP.includes("::ffff:")){
         clientIP=clientIP.split("::ffff:")[1];
@@ -59,6 +59,13 @@ wsServer.on("connection", (ws,req)=>{
                 }));
             }
         });
+    });
+    ws.on("close", ()=>{
+        let index=clients.indexOf(ws);
+        if (index!=-1){
+            clients.splice(index, 1);
+            console.log(`Client disconnected. Remaining: ${clients.length}`);
+        }
     });
 });
 console.log(`Server on ws://${localIP}:${portWS}`);
