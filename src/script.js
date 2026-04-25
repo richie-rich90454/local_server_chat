@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 		try{
 			let response=await fetch('/get-client-ip');
 			let data=await response.json();
-			if(data.ip&&data.ip!=="::1"&&data.ip!=="127.0.0.1"){
+			if(data.ip&&data.ip!="::1"&&data.ip!="127.0.0.1"){
 				clientRealIP=data.ip;
 				userIP.value=`Your local IP is: ${clientRealIP}`;
 			}
@@ -88,7 +88,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			return randomName;
 		}
 		else{
-			return generateRandomUserame();
+			return generateRandomUsername();
 		}
 	}
 	async function loggingIn(){
@@ -194,7 +194,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			socket.send(JSON.stringify({username:currentUser,message:message,ip:clientRealIP}));
 			userMessage.value="";
 		}
-		else if(socket&&socket.readyState!==WebSocket.OPEN){
+		else if(socket&&socket.readyState!=WebSocket.OPEN){
 			console.error("WebSocket not open");
 			alert("Connection lost. Please refresh.");
 		}
@@ -206,4 +206,34 @@ document.addEventListener("DOMContentLoaded",()=>{
 		}
 	});
 	document.getElementById("sendMessage").onclick=sendMessage;
+	function applyTheme(theme){
+		if(theme=="dark"){
+			document.body.setAttribute("data-theme","dark");
+		}
+		else{
+			document.body.setAttribute("data-theme","light");
+		}
+	}
+	function getSystemTheme(){
+		return window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";
+	}
+	let savedTheme=localStorage.getItem("chatTheme");
+	if(!savedTheme){
+		savedTheme=getSystemTheme();
+	}
+	applyTheme(savedTheme);
+	let themeToggle=document.getElementById("themeToggle");
+	if(themeToggle){
+		themeToggle.addEventListener("click",()=>{
+			let currentTheme=document.body.getAttribute("data-theme");
+			let newTheme=currentTheme=="dark"?"light":"dark";
+			applyTheme(newTheme);
+			localStorage.setItem("chatTheme",newTheme);
+		});
+	}
+	window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",(e)=>{
+		if(!localStorage.getItem("chatTheme")){
+			applyTheme(e.matches?"dark":"light");
+		}
+	});
 });

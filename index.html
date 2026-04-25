@@ -30,15 +30,23 @@
 		<div id="chatUI" style="display: none;">
 			<div id="chatHeader">
 				<h2>Locally Hosted Chat Application Interface <span id="onlineCount">(0 online)</span></h2>
-				<input type="button" id="exportChat" value="Export Chat">
+				<div id="headerControls">
+					<button id="themeToggle">
+						<svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+						<svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+					</button>
+					<input type="button" id="exportChat" value="Export Chat">
+				</div>
 			</div>
 			<ul id="messages"></ul>
-			<div>
+			<div id="inputArea">
 				<textarea id="userMessage" placeholder="Enter something here 😀 (e.g. How is everybody's day?)&NewLine;Send the message with shift+enter or the &quot;Send Message&quot; button below" rows="5" cols="80"></textarea>
 				<input type="button" id="sendMessage" value="Send Message">
 			</div>
+			<button id="scrollToBottomBtn">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+			</button>
 		</div>
-		<button id="scrollToBottomBtn">↓</button>
 		<script type="module" src="src/script.js"></script>
 	</body>
 </html>
