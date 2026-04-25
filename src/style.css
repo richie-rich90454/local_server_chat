@@ -48,6 +48,9 @@ body[data-theme="dark"]{
 	--theme-toggle-color:#E0E0E0;
 	--typing-color:#AAA;
 }
+*{
+	box-sizing:border-box;
+}
 body{
 	font-family:"Noto Sans",sans-serif;
 	margin:0;
@@ -58,6 +61,7 @@ body{
 	min-height:100vh;
 	background:var(--background-body);
 	-webkit-tap-highlight-color:transparent;
+	line-height:1.4;
 }
 #login,#chatUI{
 	padding:2rem;
@@ -170,6 +174,8 @@ li:last-child{
 	justify-content:space-between;
 	align-items:center;
 	margin-bottom:1rem;
+	flex-wrap:wrap;
+	gap:0.5rem;
 }
 #chatHeader h2{
 	margin:0;
@@ -177,12 +183,13 @@ li:last-child{
 	color:var(--text-primary);
 }
 #login h2{
-	color: var(--text-primary);
+	color:var(--text-primary);
 }
 #headerControls{
 	display:flex;
 	gap:0.5rem;
 	align-items:center;
+	flex-wrap:wrap;
 }
 #themeToggle{
 	background-color:var(--theme-toggle-bg);
@@ -200,7 +207,7 @@ li:last-child{
 #themeToggle:hover{
 	background-color:var(--button-hover);
 }
-#sunIcon, #moonIcon{
+#sunIcon,#moonIcon{
 	display:block;
 }
 body[data-theme="light"] #moonIcon{
@@ -214,7 +221,7 @@ body[data-theme="dark"] #sunIcon{
 	font-weight:normal;
 	color:var(--online-color);
 }
-#exportChat, #clearChat{
+#exportChat,#clearChat{
 	width:auto;
 	padding:0.3rem 0.8rem;
 	margin:0;
@@ -224,7 +231,7 @@ body[data-theme="dark"] #sunIcon{
 	cursor:pointer;
 	color:var(--text-primary);
 }
-#exportChat:hover, #clearChat:hover{
+#exportChat:hover,#clearChat:hover{
 	background-color:var(--button-hover);
 }
 #inputArea{
@@ -235,16 +242,33 @@ body[data-theme="dark"] #sunIcon{
 	gap:0.5rem;
 	align-items:center;
 }
-#emojiPickerContainer{
-	position:relative;
-}
-#emojiBtn{
-	background:var(--button-bg);
+#emojiBtn,#sendMessage{
+	display:inline-flex;
+	align-items:center;
+	justify-content:center;
+	padding:0.4rem 0.8rem;
+	font-size:1rem;
+	line-height:1.2;
+	height:auto;
+	min-height:2.2rem;
+	vertical-align:middle;
+	margin:0;
+	background-color:var(--button-bg);
 	border:1px solid var(--border-card);
 	border-radius:.3rem;
-	padding:0.3rem 0.6rem;
 	cursor:pointer;
-	font-size:1.2rem;
+	color:var(--text-primary);
+}
+#emojiBtn:hover,#sendMessage:hover{
+	background-color:var(--button-hover);
+}
+#emojiBtn:active,#sendMessage:active{
+	background-color:var(--button-active);
+}
+#emojiPickerContainer{
+	position:relative;
+	display:inline-flex;
+	align-items:center;
 }
 #emojiPicker{
 	position:absolute;
@@ -254,16 +278,19 @@ body[data-theme="dark"] #sunIcon{
 	border:1px solid var(--border-card);
 	border-radius:.3rem;
 	padding:0.3rem;
-	display:flex;
-	flex-wrap:wrap;
-	gap:0.2rem;
-	width:160px;
+	display:grid;
+	grid-template-columns:repeat(5, 1fr);
+	grid-template-rows:repeat(2, auto);
+	gap:0.3rem;
+	width:auto;
+	min-width:160px;
 	z-index:20;
 }
 #emojiPicker span{
 	cursor:pointer;
 	font-size:1.2rem;
-	padding:0.1rem;
+	padding:0.2rem;
+	text-align:center;
 }
 #emojiPicker span:hover{
 	background:var(--button-hover);
@@ -313,18 +340,10 @@ body[data-theme="dark"] #sunIcon{
 	animation:shake 0.4s ease-in-out;
 }
 @keyframes shake{
-	0%{
-		transform:translateX(0);
-	}
-	25%{
-		transform:translateX(-5px);
-	}
-	75%{
-		transform:translateX(5px);
-	}
-	100%{
-		transform:translateX(0);
-	}
+	0%{transform:translateX(0);}
+	25%{transform:translateX(-5px);}
+	75%{transform:translateX(5px);}
+	100%{transform:translateX(0);}
 }
 #typingIndicator{
 	min-height:1.5rem;
@@ -334,14 +353,41 @@ body[data-theme="dark"] #sunIcon{
 	margin-bottom:0.5rem;
 	text-align:left;
 }
-@media (max-width:768px){
+@media (max-width:1024px) and (min-width:768px){
 	#login,#chatUI{
 		padding:1.5rem;
+		max-width:90%;
+	}
+	#messages{
+		max-height:20rem;
+		font-size:1rem;
+	}
+	#chatHeader h2{
+		font-size:1.3rem;
+	}
+	input,textarea{
+		font-size:1rem;
+		padding:0.6rem;
+	}
+	input[type="button"],#emojiBtn,#sendMessage{
+		padding:0.5rem 0.7rem;
+		min-height:2.5rem;
+	}
+}
+@media (max-width:480px){
+	#login,#chatUI{
+		padding:1rem;
 		max-width:95%;
 	}
-	#genUsername{
-		font-size:0.75rem;
-		padding:.4rem .2rem;
+	body{
+		padding:0.5rem;
+	}
+	#chatHeader{
+		flex-direction:column;
+		align-items:stretch;
+	}
+	#headerControls{
+		justify-content:center;
 	}
 	#messages{
 		max-height:12rem;
@@ -350,21 +396,97 @@ body[data-theme="dark"] #sunIcon{
 	#chatHeader h2{
 		font-size:1.2rem;
 	}
-}
-@media (max-width:480px){
-	#login,#chatUI{
-		padding:1rem;
+	textarea{
+		font-size:1rem;
+		min-height:70px;
 	}
-	#username-wrapper{
-		gap:0.3rem;
+	input,textarea{
+		padding:0.5rem;
+	}
+	#emojiBtn,#sendMessage{
+		padding:0.3rem 0.6rem;
+		font-size:0.9rem;
+		min-height:2rem;
 	}
 	#genUsername{
 		font-size:0.7rem;
+		padding:0.4rem 0.2rem;
+	}
+	#username-wrapper{
+		flex-direction:column;
+		gap:0.3rem;
+	}
+	#username-wrapper input{
+		width:100%;
+	}
+	#onlineCount{
+		display:block;
+		margin-top:0.2rem;
+	}
+	#scrollToBottomBtn{
+		width:40px;
+		height:40px;
+		font-size:20px;
+		bottom:15px;
+		right:15px;
+	}
+}
+@media (max-width:380px){
+	#login,#chatUI{
+		padding:0.8rem;
 	}
 	#messages{
 		max-height:10rem;
+		font-size:0.85rem;
+	}
+	#chatHeader h2{
+		font-size:1rem;
 	}
 	textarea{
-		font-size:16px;
+		min-height:60px;
+	}
+	#emojiBtn,#sendMessage{
+		padding:0.2rem 0.5rem;
+		font-size:0.85rem;
+	}
+}
+@media (min-width:1280px){
+	#login,#chatUI{
+		max-width:80rem;
+		padding:2rem;
+	}
+	#messages{
+		max-height:20rem;
+	}
+	input,textarea{
+		font-size:1.1rem;
+	}
+	#chatHeader h2{
+		font-size:1.7rem;
+	}
+}
+@media (max-width:896px) and (orientation:landscape){
+	#messages{
+		max-height:8rem;
+	}
+	textarea{
+		min-height:50px;
+	}
+	#chatHeader h2{
+		font-size:1rem;
+	}
+}
+@media (hover:none) and (pointer:coarse){
+	input[type="button"],#emojiBtn,#sendMessage,#exportChat,#clearChat,#themeToggle,#genUsername,#joinChat,#scrollToBottomBtn{
+		min-height:44px;
+	}
+}
+@media (min-width:1024px) and (max-width:1366px){
+	#login,#chatUI{
+		max-width:80%;
+		padding:2rem;
+	}
+	#messages{
+		max-height:22rem;
 	}
 }
