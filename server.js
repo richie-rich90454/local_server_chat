@@ -3,6 +3,7 @@ import {networkInterfaces} from "os";
 import express from "express";
 import path from "path";
 import {fileURLToPath} from "url";
+import {Filter} from "bad-words";
 const __filename=fileURLToPath(import.meta.url);
 const __dirname=path.dirname(__filename);
 const getLocalIP=()=>{
@@ -20,6 +21,7 @@ const localIP=getLocalIP();
 const portWS=8191;
 const portUI=2047;
 const app=express();
+app.use(express.json());
 app.use(express.static(path.join(__dirname, "dist")));
 app.get("/", (req, res)=>{
 	res.sendFile(path.join(__dirname, "public", "index.html"));
@@ -33,6 +35,12 @@ app.get("/get-client-ip", (req, res)=>{
 });
 app.listen(portUI, ()=>{
 	console.log(`UI on http://${localIP}:${portUI}`);
+});
+const filter=new Filter();
+app.post('/check-name', (req, res)=>{
+	const {name}=req.body;
+	const isClean=!filter.isProfane(name);
+	res.json({clean: isClean});
 });
 const wsServer=new WebSocketServer({port:portWS, host:"::"});
 let clients=[];
