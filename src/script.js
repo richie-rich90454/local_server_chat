@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 	let clientRealIP="Unknown";
 	let autoScroll=true;
 	let scrollBtn=document.getElementById("scrollToBottomBtn");
+	let joinFailed=false;
 	function getCurrentTime(){
 		let now=new Date();
 		return `${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}:${now.getSeconds().toString().padStart(2,"0")}`;
@@ -117,6 +118,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 		const serverHost=window.location.hostname;
 		const wsUrl=`ws://${serverHost}:${defaultPort}`;
 		socket=new WebSocket(wsUrl);
+		joinFailed=false;
 		socket.onopen=()=>{
 			socket.send(JSON.stringify({type:"join",username:currentUser}));
 		};
@@ -134,6 +136,12 @@ document.addEventListener("DOMContentLoaded",()=>{
 						clientRealIP=ip;
 						userIP.value=`Your local IP is: ${clientRealIP}`;
 					}
+					return;
+				}
+				if(data.message&&data.message.includes("already taken")){
+					joinFailed=true;
+					document.getElementById("login-error").textContent=data.message;
+					socket.close();
 					return;
 				}
 				let newMessage=document.createElement("li");
@@ -183,7 +191,14 @@ document.addEventListener("DOMContentLoaded",()=>{
 			checkScrollPosition();
 		};
 		socket.onerror=(error)=>{ console.error("WebSocket error",error); };
-		socket.onclose=()=>{ console.log("WebSocket closed"); };
+		socket.onclose=()=>{
+			console.log("WebSocket closed");
+			if(joinFailed){
+				loginPage.style.display="block";
+				chatPage.style.display="none";
+				if(socket) socket=null;
+			}
+		};
 		if(messagesList){
 			messagesList.addEventListener("scroll",checkScrollPosition);
 		}

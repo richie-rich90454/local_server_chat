@@ -80,6 +80,11 @@ wsServer.on("connection",(ws,req)=>{
 	ws.on("message",(message)=>{
 		const data=JSON.parse(message);
 		if(data.type=="join"){
+			if(usernameToWs.has(data.username)){
+				ws.send(JSON.stringify({type:"system",message:`Username "${data.username}" is already taken. Please choose another name.`}));
+				ws.close(1008, "Username taken");
+				return;
+			}
 			ws.username=data.username;
 			usernameToWs.set(data.username,ws);
 			broadcastOnlineCount();
