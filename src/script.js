@@ -57,6 +57,33 @@ document.addEventListener("DOMContentLoaded",()=>{
 			return true;
 		}
 	}
+    function exportChatLog(){
+        let messages=messagesList.children;
+        if (messages.length==0){
+            alert("No messages to export.");
+            return;
+        }
+        let lines=[];
+        for (let li of messages){
+            let text=li.innerText;
+            if (text.trim()){
+                lines.push(text);
+            }
+        }
+        if (lines.length==0){
+            alert("No messages to export.");
+            return;
+        }
+        let content=lines.join("\n");
+        let blob=new Blob([content], {type: "text/plain"});
+        let now=new Date();
+        let timestamp=`${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,"0")}-${now.getDate().toString().padStart(2,"0")}_${now.getHours().toString().padStart(2,"0")}-${now.getMinutes().toString().padStart(2,"0")}-${now.getSeconds().toString().padStart(2,"0")}`;
+        let link=document.createElement("a");
+        link.href=URL.createObjectURL(blob);
+        link.download=`chat_log_${timestamp}.txt`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
 	async function generateRandomUsername(){
 		let charSet="abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 		let randomName="";
@@ -145,5 +172,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 			sendMessage();
 		}
 	});
+    document.getElementById("exportChat").addEventListener("click", ()=>{
+        exportChatLog();
+    });
 	document.getElementById("sendMessage").onclick=sendMessage;
 });
