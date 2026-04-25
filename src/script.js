@@ -91,6 +91,14 @@ document.addEventListener("DOMContentLoaded",()=>{
 			return generateRandomUsername();
 		}
 	}
+	function parsePrivateMessage(msg){
+		let pattern=/^\/msg\s+(\S+)\s+(.+)$/s;
+		let match=msg.match(pattern);
+		if(match){
+			return {target:match[1], content:match[2]};
+		}
+		return null;
+	}
 	async function loggingIn(){
 		let username=usernameInput.value.trim();
 		if(!username){
@@ -123,6 +131,24 @@ document.addEventListener("DOMContentLoaded",()=>{
 				return;
 			}
 			if(data.type=="system") return;
+			if(data.type=="private"){
+				let newMessage=document.createElement("li");
+				let time=data.timestamp||getCurrentTime();
+				let formattedMessage=formatMessage(data.message);
+				let displayIP=data.ip||"Unknown";
+				if(data.self){
+					newMessage.innerHTML=`[Private to ${data.target?data.target:"?"}] You [${displayIP}] (${time}): ${formattedMessage}`;
+				}
+				else{
+					newMessage.innerHTML=`[Private] ${data.from} [${displayIP}] (${time}): ${formattedMessage}`;
+				}
+				newMessage.style.whiteSpace="pre-wrap";
+				newMessage.classList.add("privateMessage");
+				messagesList.appendChild(newMessage);
+				if(autoScroll) scrollToBottom();
+				checkScrollPosition();
+				return;
+			}
 			let newMessage=document.createElement("li");
 			let messageTime=getCurrentTime();
 			let formattedMessage=formatMessage(data.message||"");
@@ -190,14 +216,27 @@ document.addEventListener("DOMContentLoaded",()=>{
 	if(exportBtn) exportBtn.addEventListener("click",exportChatLog);
 	function sendMessage(){
 		let message=userMessage.value.trim();
-		if(message&&socket&&socket.readyState==WebSocket.OPEN){
-			socket.send(JSON.stringify({username:currentUser,message:message,ip:clientRealIP}));
-			userMessage.value="";
-		}
-		else if(socket&&socket.readyState!=WebSocket.OPEN){
+		if(!message) return;
+		if(!socket||socket.readyState!=WebSocket.OPEN){
 			console.error("WebSocket not open");
 			alert("Connection lost. Please refresh.");
+			return;
 		}
+		let privateInfo=parsePrivateMessage(message);
+		if(privateInfo){
+			socket.send(JSON.stringify({
+				type:"private",
+				username:currentUser,
+				target:privateInfo.target,
+				message:privateInfo.content,
+				ip:clientRealIP,
+				timestamp:getCurrentTime()
+			}));
+		}
+		else{
+			socket.send(JSON.stringify({username:currentUser, message:message, ip:clientRealIP}));
+		}
+		userMessage.value="";
 	}
 	userMessage.addEventListener("keypress",(event)=>{
 		if(event.key=="Enter"&&event.shiftKey){

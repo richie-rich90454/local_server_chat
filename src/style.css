@@ -10,6 +10,7 @@
 	--button-active:#D0D0D0;
 	--message-user:#EC1414;
 	--message-other:#000;
+	--message-private:#0066CC;
 	--message-border:#EEE;
 	--scroll-btn-bg:#000;
 	--scroll-btn-color:#FFF;
@@ -33,6 +34,7 @@ body[data-theme="dark"]{
 	--button-active:#555;
 	--message-user:#FF8888;
 	--message-other:#CCCCCC;
+	--message-private:#66B3FF;
 	--message-border:#444;
 	--scroll-btn-bg:#444;
 	--scroll-btn-color:#FFF;
@@ -130,6 +132,11 @@ li:last-child{
 .otherMessage{
 	color:var(--message-other);
 	text-align:left;
+}
+.privateMessage{
+	color:var(--message-private);
+	text-align:left;
+	font-style:italic;
 }
 #username-wrapper{
 	display:flex;
