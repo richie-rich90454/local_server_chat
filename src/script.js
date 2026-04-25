@@ -92,8 +92,13 @@ document.addEventListener("DOMContentLoaded",()=>{
 		}
 	}
 	function parsePrivateMessage(msg){
-		let pattern=/^\/msg\s+(\S+)\s+(.+)$/s;
-		let match=msg.match(pattern);
+		let quotedPattern=/^\/msg\s+"([^"]+)"\s+(.+)$/s;
+		let match=msg.match(quotedPattern);
+		if(match){
+			return {target:match[1], content:match[2]};
+		}
+		let simplePattern=/^\/msg\s+(\S+)\s+(.+)$/s;
+		match=msg.match(simplePattern);
 		if(match){
 			return {target:match[1], content:match[2]};
 		}
@@ -122,25 +127,37 @@ document.addEventListener("DOMContentLoaded",()=>{
 				if(onlineSpan) onlineSpan.textContent=`(${data.count} online)`;
 				return;
 			}
-			if(data.type=="system"&&data.message&&data.message.includes("Your IP is")){
-				let ip=data.message.split("Your IP is ")[1];
-				if(clientRealIP=="Unknown"){
-					clientRealIP=ip;
-					userIP.value=`Your local IP is: ${clientRealIP}`;
+			if(data.type=="system"){
+				if(data.message&&data.message.includes("Your IP is")){
+					let ip=data.message.split("Your IP is ")[1];
+					if(clientRealIP=="Unknown"){
+						clientRealIP=ip;
+						userIP.value=`Your local IP is: ${clientRealIP}`;
+					}
+					return;
 				}
+				let newMessage=document.createElement("li");
+				let time=getCurrentTime();
+				newMessage.innerHTML=`<em>${escapeHtml(data.message)}</em>`;
+				newMessage.style.whiteSpace="pre-wrap";
+				newMessage.style.color="gray";
+				newMessage.style.fontStyle="italic";
+				newMessage.classList.add("systemMessage");
+				messagesList.appendChild(newMessage);
+				if(autoScroll) scrollToBottom();
+				checkScrollPosition();
 				return;
 			}
-			if(data.type=="system") return;
 			if(data.type=="private"){
 				let newMessage=document.createElement("li");
 				let time=data.timestamp||getCurrentTime();
 				let formattedMessage=formatMessage(data.message);
 				let displayIP=data.ip||"Unknown";
 				if(data.self){
-					newMessage.innerHTML=`[Private to ${data.target?data.target:"?"}] You [${displayIP}] (${time}): ${formattedMessage}`;
+					newMessage.innerHTML=`[Private to ${escapeHtml(data.target)}] You [${displayIP}] (${time}): ${formattedMessage}`;
 				}
 				else{
-					newMessage.innerHTML=`[Private] ${data.from} [${displayIP}] (${time}): ${formattedMessage}`;
+					newMessage.innerHTML=`[Private] ${escapeHtml(data.from)} [${displayIP}] (${time}): ${formattedMessage}`;
 				}
 				newMessage.style.whiteSpace="pre-wrap";
 				newMessage.classList.add("privateMessage");
@@ -153,7 +170,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			let messageTime=getCurrentTime();
 			let formattedMessage=formatMessage(data.message||"");
 			let displayIP=data.ip||clientRealIP||"Unknown";
-			newMessage.innerHTML=`${data.username} [${displayIP}] (${messageTime}): ${formattedMessage}`;
+			newMessage.innerHTML=`${escapeHtml(data.username)} [${displayIP}] (${messageTime}): ${formattedMessage}`;
 			newMessage.style.whiteSpace="pre-wrap";
 			if(data.username==currentUser){
 				newMessage.classList.add("userMessage");

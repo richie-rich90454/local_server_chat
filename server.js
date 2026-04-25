@@ -53,10 +53,24 @@ function broadcastOnlineCount(){
 		}
 	});
 }
+function getCurrentUsersList(){
+	let users=[];
+	for(const [username] of usernameToWs.entries()){
+		users.push(username);
+	}
+	return users.join(", ");
+}
+function broadcastSystemMessage(message,excludeWs=null){
+	clients.forEach(client=>{
+		if(client!==excludeWs&&client.readyState===WebSocket.OPEN){
+			client.send(JSON.stringify({type:"system",message}));
+		}
+	});
+}
 wsServer.on("connection",(ws,req)=>{
 	clients.push(ws);
 	broadcastOnlineCount();
-	console.log("New connection established"+". Number of client(s) "+clients.length);
+	console.log("New connection established"+". Number of client(s): "+clients.length);
 	let clientIP=req.headers["x-forwarded-for"]||req.socket.remoteAddress;
 	if(clientIP&&clientIP.includes("::ffff:")){
 		clientIP=clientIP.split("::ffff:")[1];
@@ -69,6 +83,8 @@ wsServer.on("connection",(ws,req)=>{
 			ws.username=data.username;
 			usernameToWs.set(data.username,ws);
 			broadcastOnlineCount();
+			const userList=getCurrentUsersList();
+			broadcastSystemMessage(`${data.username} joined the chat. Current users: ${userList}`,ws);
 			return;
 		}
 		else if(data.type=="private"){
@@ -109,7 +125,11 @@ wsServer.on("connection",(ws,req)=>{
 		const index=clients.indexOf(ws);
 		if(index!=-1){
 			clients.splice(index,1);
-			if(ws.username) usernameToWs.delete(ws.username);
+			if(ws.username){
+				usernameToWs.delete(ws.username);
+				const userList=getCurrentUsersList();
+				broadcastSystemMessage(`${ws.username} left the chat. Current users: ${userList}`);
+			}
 			broadcastOnlineCount();
 			console.log(`Client disconnected. Remaining: ${clients.length}`);
 		}

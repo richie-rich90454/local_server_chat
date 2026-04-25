@@ -174,7 +174,7 @@ li:last-child{
 	color:var(--text-primary);
 }
 #login h2{
-    color: var(--text-primary);
+	color: var(--text-primary);
 }
 #headerControls{
 	display:flex;
