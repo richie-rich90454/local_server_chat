@@ -38,7 +38,7 @@ const wsServer=new WebSocketServer({port: portWS, host: "0.0.0.0"});
 let clients=[];
 wsServer.on("connection", (ws,req)=>{
     clients.push(ws);
-    console.log("New connection established"+". Number of client(s)"+clients.length);
+    console.log("New connection established"+". Number of client(s) "+clients.length);
     let clientIP=req.headers["x-forwarded-for"]||req.socket.remoteAddress;
     if(clientIP&&clientIP.includes("::ffff:")){
         clientIP=clientIP.split("::ffff:")[1];
