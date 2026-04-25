@@ -36,12 +36,23 @@
 						<svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
 					</button>
 					<input type="button" id="exportChat" value="Export Chat">
+					<input type="button" id="clearChat" value="Clear Chat">
 				</div>
 			</div>
+			<div id="typingIndicator"></div>
 			<ul id="messages"></ul>
 			<div id="inputArea">
 				<textarea id="userMessage" placeholder="Enter something here 😀 (e.g. How is everybody's day?)&NewLine;Send the message with shift+enter or the &quot;Send Message&quot; button below" rows="5" cols="80"></textarea>
-				<input type="button" id="sendMessage" value="Send Message">
+				<div id="inputActions">
+					<div id="emojiPickerContainer">
+						<button id="emojiBtn" title="Insert emoji">😀</button>
+						<div id="emojiPicker" style="display:none;">
+							<span>😀</span> <span>😂</span> <span>😍</span> <span>😢</span> <span>😡</span>
+							<span>👍</span> <span>❤️</span> <span>🎉</span> <span>🔥</span> <span>✨</span>
+						</div>
+					</div>
+					<input type="button" id="sendMessage" value="Send Message">
+				</div>
 			</div>
 			<button id="scrollToBottomBtn">
 				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>

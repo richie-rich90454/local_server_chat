@@ -96,6 +96,14 @@ wsServer.on("connection",(ws,req)=>{
 			});
 			return;
 		}
+		else if(data.type=="typing"){
+			clients.forEach(client=>{
+				if(client!==ws&&client.readyState===WebSocket.OPEN){
+					client.send(JSON.stringify({type:"typing", username:data.username, typing:data.typing}));
+				}
+			});
+			return;
+		}
 		else if(data.type=="getUsers"){
 			const userList=getCurrentUsersList();
 			if(ws.readyState===WebSocket.OPEN){

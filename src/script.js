@@ -13,6 +13,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 	let scrollBtn=document.getElementById("scrollToBottomBtn");
 	let joinFailed=false;
 	let chatErrorDiv=document.getElementById("chatError");
+	let typingTimeout=null;
+	let currentTypers=new Set();
+	let typingIndicatorDiv=document.getElementById("typingIndicator");
+
 	function showChatError(msg){
 		if(!chatErrorDiv) return;
 		chatErrorDiv.textContent=msg;
@@ -40,8 +44,16 @@ document.addEventListener("DOMContentLoaded",()=>{
 			return m;
 		});
 	}
-	function formatMessage(text){
+	function formatMarkdown(text){
+		// escape HTML first
 		let escaped=escapeHtml(text);
+		// code: `code`
+		escaped=escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+		// bold: **bold**
+		escaped=escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+		// italic: *italic*
+		escaped=escaped.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+		// line breaks
 		return escaped.replace(/\n/g, '<br>');
 	}
 	function scrollToBottom(){
@@ -121,6 +133,30 @@ document.addEventListener("DOMContentLoaded",()=>{
 		}
 		return null;
 	}
+	function updateTypingIndicator(){
+		if(!typingIndicatorDiv) return;
+		let arr=Array.from(currentTypers);
+		if(arr.length==0){
+			typingIndicatorDiv.textContent="";
+		}
+		else if(arr.length==1){
+			typingIndicatorDiv.textContent=`${escapeHtml(arr[0])} is typing...`;
+		}
+		else{
+			let last=arr.pop();
+			typingIndicatorDiv.textContent=`${arr.map(escapeHtml).join(", ")} and ${escapeHtml(last)} are typing...`;
+		}
+	}
+	function sendTypingStop(){
+		if(socket&&socket.readyState===WebSocket.OPEN){
+			socket.send(JSON.stringify({type:"typing", username:currentUser, typing:false}));
+		}
+	}
+	function sendTypingStart(){
+		if(socket&&socket.readyState===WebSocket.OPEN){
+			socket.send(JSON.stringify({type:"typing", username:currentUser, typing:true}));
+		}
+	}
 	async function loggingIn(){
 		let username=usernameInput.value.trim();
 		if(!username){
@@ -144,6 +180,16 @@ document.addEventListener("DOMContentLoaded",()=>{
 			if(data.type=="onlineCount"){
 				let onlineSpan=document.getElementById("onlineCount");
 				if(onlineSpan) onlineSpan.textContent=`(${data.count} online)`;
+				return;
+			}
+			if(data.type=="typing"){
+				if(data.typing){
+					currentTypers.add(data.username);
+				}
+				else{
+					currentTypers.delete(data.username);
+				}
+				updateTypingIndicator();
 				return;
 			}
 			if(data.type=="system"){
@@ -177,7 +223,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			if(data.type=="private"){
 				let newMessage=document.createElement("li");
 				let time=data.timestamp||getCurrentTime();
-				let formattedMessage=formatMessage(data.message);
+				let formattedMessage=formatMarkdown(data.message);
 				let displayIP=data.ip||"Unknown";
 				if(data.self){
 					newMessage.innerHTML=`[Private to ${escapeHtml(data.target)}] You [${displayIP}] (${time}): ${formattedMessage}`;
@@ -194,7 +240,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			}
 			let newMessage=document.createElement("li");
 			let messageTime=getCurrentTime();
-			let formattedMessage=formatMessage(data.message||"");
+			let formattedMessage=formatMarkdown(data.message||"");
 			let displayIP=data.ip||clientRealIP||"Unknown";
 			newMessage.innerHTML=`${escapeHtml(data.username)} [${displayIP}] (${messageTime}): ${formattedMessage}`;
 			newMessage.style.whiteSpace="pre-wrap";
@@ -264,18 +310,38 @@ document.addEventListener("DOMContentLoaded",()=>{
 	}
 	let exportBtn=document.getElementById("exportChat");
 	if(exportBtn) exportBtn.addEventListener("click",exportChatLog);
-	function sendMessage(){
-		let message=userMessage.value.trim();
-		if(!message) return;
+	let clearBtn=document.getElementById("clearChat");
+	if(clearBtn){
+		clearBtn.addEventListener("click",()=>{
+			while(messagesList.firstChild){
+				messagesList.removeChild(messagesList.firstChild);
+			}
+		});
+	}
+	let emojiBtn=document.getElementById("emojiBtn");
+	let emojiPicker=document.getElementById("emojiPicker");
+	if(emojiBtn&&emojiPicker){
+		emojiBtn.addEventListener("click",()=>{
+			emojiPicker.style.display=emojiPicker.style.display=="none"?"flex":"none";
+		});
+		emojiPicker.querySelectorAll("span").forEach(span=>{
+			span.addEventListener("click",()=>{
+				userMessage.value+=span.textContent;
+				emojiPicker.style.display="none";
+				userMessage.focus();
+			});
+		});
+		document.addEventListener("click",(e)=>{
+			if(!emojiBtn.contains(e.target)&&!emojiPicker.contains(e.target)){
+				emojiPicker.style.display="none";
+			}
+		});
+	}
+	function sendMessageContent(message){
 		if(!socket||socket.readyState!=WebSocket.OPEN){
 			showChatError("Connection lost. Please refresh.");
 			shakeElement(userMessage);
-			return;
-		}
-		if(message=="/users"){
-			socket.send(JSON.stringify({type:"getUsers"}));
-			userMessage.value="";
-			return;
+			return false;
 		}
 		let privateInfo=parsePrivateMessage(message);
 		if(privateInfo){
@@ -291,7 +357,28 @@ document.addEventListener("DOMContentLoaded",()=>{
 		else{
 			socket.send(JSON.stringify({username:currentUser, message:message, ip:clientRealIP}));
 		}
-		userMessage.value="";
+		return true;
+	}
+	function sendMessage(){
+		let message=userMessage.value.trim();
+		if(!message) return;
+		if(message=="/users"){
+			if(socket&&socket.readyState==WebSocket.OPEN){
+				socket.send(JSON.stringify({type:"getUsers"}));
+				userMessage.value="";
+			}
+			return;
+		}
+		if(message=="/help"){
+			let helpText="Available commands:\n/users - list online users\n/msg \"username\" message - send private message\n/help - show this help";
+			let fakeEvent={data:JSON.stringify({type:"system",message:helpText})};
+			socket.onmessage(fakeEvent);
+			userMessage.value="";
+			return;
+		}
+		if(sendMessageContent(message)){
+			userMessage.value="";
+		}
 	}
 	userMessage.addEventListener("keypress",(event)=>{
 		if(event.key=="Enter"&&event.shiftKey){
@@ -299,7 +386,47 @@ document.addEventListener("DOMContentLoaded",()=>{
 			sendMessage();
 		}
 	});
+	userMessage.addEventListener("input",()=>{
+		if(typingTimeout) clearTimeout(typingTimeout);
+		sendTypingStart();
+		typingTimeout=setTimeout(()=>{
+			sendTypingStop();
+		},1000);
+	});
+	userMessage.addEventListener("blur",()=>{
+		if(typingTimeout) clearTimeout(typingTimeout);
+		sendTypingStop();
+	});
 	document.getElementById("sendMessage").onclick=sendMessage;
+	userMessage.addEventListener("dragover",(e)=>{
+		e.preventDefault();
+	});
+	userMessage.addEventListener("drop",async(e)=>{
+		e.preventDefault();
+		let file=e.dataTransfer.files[0];
+		if(!file) return;
+		if(!file.type.startsWith("image/")){
+			showChatError("Only image files are allowed.");
+			return;
+		}
+		if(file.size>1024*1024){
+			showChatError("File too large (max 1 MB).");
+			return;
+		}
+		let reader=new FileReader();
+		reader.onload=async function(ev){
+			let base64=ev.target.result;
+			sendMessageContent(`[Image] ${base64}`);
+		};
+		reader.readAsDataURL(file);
+	});
+	window.addEventListener("beforeunload",(e)=>{
+		if(chatPage.style.display=="block"){
+			e.preventDefault();
+			e.returnValue="You are currently in the chat. Leaving will disconnect you.";
+			return "You are currently in the chat. Leaving will disconnect you.";
+		}
+	});
 	function applyTheme(theme){
 		if(theme=="dark"){
 			document.body.setAttribute("data-theme","dark");
