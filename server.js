@@ -20,7 +20,7 @@ const localIP=getLocalIP();
 const portWS=8191;
 const portUI=2047;
 const app=express();
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "dist")));
 app.get("/", (req, res)=>{
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });

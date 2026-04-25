@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Local Server Chat</title>
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        <link rel="icon" type="image/png" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" href="/favicon-16x16.png">
+        <link rel="icon" href="/favicon.ico" type="image/x-icon">
+        <link rel="icon" href="/android-chrome-192x192.png">
+        <link rel="icon" href="/android-chrome-512x512.png">
+        <link rel="manifest" href="/site.webmanifest">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="src/style.css">
+    </head>
+    <body>
+        <div id="login">
+            <h2>Locally Hosted Chat Application Login</h2>
+            <input type="text" id="username" placeholder="Chat Username">
+            <input type="text" id="userIp" placeholder="IP not Detected" disabled>
+            <input type="button" value="Join the chat">
+            <div id="login-error"></div>
+        </div>
+        <div id="chatUI" style="display: none;">
+            <h2>Locally Hosted Chat Application Interface</h2>
+            <ul id="messages"></ul>
+            <div>
+                <textarea id="userMessage" placeholder="Enter something here 😀 (e.g. How is everybody's day?)&NewLine;Send the message with shift+enter or the &quot;Send Message&quot; button below" rows="5"cols="80"></textarea>
+                <input type="button" id="sendMessage" value="Send Message">
+            </div>
+        </div>
+        <script type="module" src="src/script.js">
+        </script>
+    </body>
+</html>

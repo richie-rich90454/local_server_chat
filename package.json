@@ -1,19 +1,29 @@
 {
     "name": "local_server_chat",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "type": "module",
-    "dependencies":{
+    "dependencies": {
         "express": "^4.21.2",
         "http": "^0.0.1-security",
         "ws": "^8.18.0"
     },
-    "main": "script.js",
-    "scripts":{
+    "main": "server.js",
+    "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
-        "start": "node server.js"
+        "start": "node server.js",
+        "dev": "vite dev",
+        "build": "vite build"
     },
-    "keywords": ["WebSocket", "Chat", "Intranet chat"],
+    "keywords": [
+        "WebSocket",
+        "Chat",
+        "Intranet chat"
+    ],
     "author": "richie-rich90454",
     "license": "Apache-2.0",
-    "description": "It should just be a chat app."
+    "description": "It should just be a chat app.",
+    "devDependencies": {
+        "vite": "^8.0.10",
+        "vite-plugin-html": "^3.2.2"
+    }
 }

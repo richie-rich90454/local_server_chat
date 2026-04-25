@@ -1,0 +1,63 @@
+body{
+    font-family: "Noto Sans";
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+#login, #chatUI{
+    padding: 2rem;
+    width: 100%;
+    max-width: 40rem;
+    margin: auto;
+    text-align: center;
+    border-radius: .223rem;
+    border: 0.2rem solid #000;
+    box-sizing: border-box;
+}
+input, textarea{
+    width: 100%;
+    padding: .223rem;
+    margin-bottom: 1rem;
+    border-radius: .30rem;
+    border: 1px solid #000;
+    background-color: #FFF;
+    font-family: "Noto Sans";
+}
+input[type="button"]{
+    width: 100%;
+    cursor: pointer;
+}
+input[type="button"]:hover{
+    background-color: #F0F0F0;
+}
+#messages{
+    min-height: 10rem;
+    border-radius: 0.1rem;
+    border: 2px solid #000;
+    list-style: none;
+    text-align: left;
+    overflow-y: scroll;
+    max-height: 15rem;
+    margin-bottom: 1rem;
+    padding-left: 0;
+}
+li{
+    word-wrap: break-word;
+}
+.userMessage{
+    color: #EC1414;
+    align-self: flex-end;
+    text-align: right;
+}
+.otherMessage{
+    background-color: #FFF;
+    text-align: left;
+    align-self: flex-start;
+}
+textarea{
+    resize: none;
+    font-size: 1rem;
+}
