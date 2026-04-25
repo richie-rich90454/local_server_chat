@@ -28,9 +28,9 @@
 			<div id="login-error"></div>
 		</div>
 		<div id="chatUI" style="display: none;">
-			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-				<h2 style="margin: 0;">Locally Hosted Chat Application Interface <span id="onlineCount" style="font-size:0.8rem;">(0 online)</span></h2>
-				<input type="button" id="exportChat" value="Export Chat" style="width: auto; padding: 0.3rem 0.8rem; margin: 0;">
+			<div id="chatHeader">
+				<h2>Locally Hosted Chat Application Interface <span id="onlineCount">(0 online)</span></h2>
+				<input type="button" id="exportChat" value="Export Chat">
 			</div>
 			<ul id="messages"></ul>
 			<div>
@@ -38,7 +38,7 @@
 				<input type="button" id="sendMessage" value="Send Message">
 			</div>
 		</div>
-		<button id="scrollToBottomBtn" style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 100; background: #000; color: #FFF; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 20px; cursor: pointer;">↓</button>
+		<button id="scrollToBottomBtn">↓</button>
 		<script type="module" src="src/script.js"></script>
 	</body>
 </html>
