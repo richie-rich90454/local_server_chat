@@ -18,16 +18,16 @@
     <body>
         <div id="login">
             <h2>Locally Hosted Chat Application Login</h2>
-            <input type="text" id="username" placeholder="Chat Username">
-            <input type="text" id="userIp" placeholder="IP not Detected" disabled>
-            <input type="button" value="Join the chat">
+            <input type="text" id="username" placeholder="Chat Username" autocomplete="off">
+            <input type="text" id="userIp" placeholder="IP not Detected" disabled autocomplete="off">
+            <input type="button" value="Join the chat" autocomplete="off">
             <div id="login-error"></div>
         </div>
         <div id="chatUI" style="display: none;">
             <h2>Locally Hosted Chat Application Interface</h2>
             <ul id="messages"></ul>
             <div>
-                <textarea id="userMessage" placeholder="Enter something here 😀 (e.g. How is everybody's day?)&NewLine;Send the message with shift+enter or the &quot;Send Message&quot; button below" rows="5"cols="80"></textarea>
+                <textarea id="userMessage" placeholder="Enter something here 😀 (e.g. How is everybody's day?)&NewLine;Send the message with shift+enter or the &quot;Send Message&quot; button below" rows="5" cols="80"></textarea>
                 <input type="button" id="sendMessage" value="Send Message">
             </div>
         </div>
