@@ -5,7 +5,6 @@ document.addEventListener("DOMContentLoaded",()=>{
 	let userIP=document.getElementById("userIp");
 	let messagesList=document.getElementById("messages");
 	let userMessage=document.getElementById("userMessage");
-    let genUsername=document.getElementById("genUsername");
 	let defaultPort=8191;
 	let socket=null;
 	let currentUser="";
@@ -13,6 +12,18 @@ document.addEventListener("DOMContentLoaded",()=>{
 	function getCurrentTime(){
 		let now=new Date();
 		return `${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}:${now.getSeconds().toString().padStart(2,"0")}`;
+	}
+	function escapeHtml(str){
+		return str.replace(/[&<>]/g, function(m){
+			if(m==='&') return '&amp;';
+			if(m==='<') return '&lt;';
+			if(m==='>') return '&gt;';
+			return m;
+		});
+	}
+	function formatMessage(text){
+		let escaped=escapeHtml(text);
+		return escaped.replace(/\n/g, '<br>');
 	}
 	async function fetchAndDisplayIP(){
 		try{
@@ -31,20 +42,18 @@ document.addEventListener("DOMContentLoaded",()=>{
 		}
 	}
 	fetchAndDisplayIP();
-    function generateRandomUserame(){
-        let charSet="abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        let randomName="";
-        while (randomName.length<5){
-            let randomCharIndex=Math.floor(Math.random()*charSet.length);
-            let randomChar=charSet[randomCharIndex];
-            while (randomName.includes(randomChar)){
-                randomCharIndex=Math.floor(Math.random()*charSet.length);
-                randomChar=charSet[randomCharIndex];
-            }
-            randomName+=randomChar;
-        }
-        return randomName;
-    }
+	function generateRandomUserame(){
+		let charSet="abcdefghijklmnopqrstuvwxyz";
+		let randomName="";
+		while(randomName.length<5){
+			let randomCharIndex=Math.floor(Math.random()*charSet.length);
+			let randomChar=charSet[randomCharIndex];
+			if(!randomName.includes(randomChar)){
+				randomName+=randomChar;
+			}
+		}
+		return randomName;
+	}
 	async function loggingIn(){
 		let username=usernameInput.value.trim();
 		if(!username){
@@ -74,9 +83,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 			if(data.type==="system") return;
 			let newMessage=document.createElement("li");
 			let messageTime=getCurrentTime();
-			let formattedMessage=(data.message||"").replace(/\n/g,"<br>");
+			let formattedMessage=formatMessage(data.message||"");
 			let displayIP=data.ip||clientRealIP||"Unknown";
-			newMessage.textContent=`${data.username} [${displayIP}] (${messageTime}): ${formattedMessage}`;
+			newMessage.innerHTML=`${data.username} [${displayIP}] (${messageTime}): ${formattedMessage}`;
+			newMessage.style.whiteSpace="pre-wrap";
 			if(data.username===currentUser){
 				newMessage.classList.add("userMessage");
 			}
@@ -92,7 +102,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 	usernameInput.addEventListener("keyup",(event)=>{
 		if(event.key==="Enter") loggingIn();
 	});
-	document.querySelector("#joinChat").addEventListener("click",loggingIn);
+	document.getElementById("joinChat").addEventListener("click",loggingIn);
+	document.getElementById("genUsername").addEventListener("click",()=>{
+		usernameInput.value=generateRandomUserame();
+	});
 	function sendMessage(){
 		let message=userMessage.value.trim();
 		if(message&&socket&&socket.readyState===WebSocket.OPEN){
@@ -110,8 +123,5 @@ document.addEventListener("DOMContentLoaded",()=>{
 			sendMessage();
 		}
 	});
-    genUsername.addEventListener("click", ()=>{
-        usernameInput.value=generateRandomUserame();
-    });
 	document.getElementById("sendMessage").onclick=sendMessage;
 });
