@@ -1,4 +1,7 @@
 # Local Server Chat
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 A fully anonymous, lightweight, and effective chatroom for users on the same local network.
 
@@ -130,3 +133,10 @@ The project favicon was generated using [favicon.io](https://favicon.io/).
 ## License
 
 This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+
+## Support the Project
+
+If you find this project useful or interesting, please consider giving it a **star** on GitHub.  
+It helps others discover the project and motivates continued development.
+
+[![Star History Chart](https://api.star-history.com/svg?repos=richie-rich90454/local_server_chat&type=Date)](https://star-history.com/#richie-rich90454/local_server_chat)
