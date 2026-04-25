@@ -139,3 +139,15 @@ li:last-child{
 		font-size:16px;
 	}
 }
+#chatUI h2{
+    font-size: 1.5rem;
+}
+#exportChat{
+    background-color: #f0f0f0;
+    border: 1px solid #000;
+    border-radius: .3rem;
+    cursor: pointer;
+}
+#exportChat:hover{
+    background-color: #e0e0e0;
+}
