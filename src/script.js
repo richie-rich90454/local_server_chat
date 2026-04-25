@@ -17,6 +17,13 @@ document.addEventListener("DOMContentLoaded",()=>{
 	let currentTypers=new Set();
 	let typingIndicatorDiv=document.getElementById("typingIndicator");
 
+	// Voice recording variables
+	let mediaRecorder=null;
+	let audioChunks=[];
+	let isRecording=false;
+	let voiceBtn=document.getElementById("voiceBtn");
+	let voiceStatus=document.getElementById("voiceStatus");
+
 	function showChatError(msg){
 		if(!chatErrorDiv) return;
 		chatErrorDiv.textContent=msg;
@@ -108,35 +115,23 @@ document.addEventListener("DOMContentLoaded",()=>{
 			}
 		}
 		let clean=await isNameClean(randomName);
-		if(clean){
-			return randomName;
-		}
-		else{
-			return generateRandomUsername();
-		}
+		if(clean) return randomName;
+		else return generateRandomUsername();
 	}
 	function parsePrivateMessage(msg){
 		let quotedPattern=/^\/msg\s+"([^"]+)"\s+(.+)$/s;
 		let match=msg.match(quotedPattern);
-		if(match){
-			return {target:match[1], content:match[2]};
-		}
+		if(match) return {target:match[1], content:match[2]};
 		let simplePattern=/^\/msg\s+(\S+)\s+(.+)$/s;
 		match=msg.match(simplePattern);
-		if(match){
-			return {target:match[1], content:match[2]};
-		}
+		if(match) return {target:match[1], content:match[2]};
 		return null;
 	}
 	function updateTypingIndicator(){
 		if(!typingIndicatorDiv) return;
 		let arr=Array.from(currentTypers);
-		if(arr.length==0){
-			typingIndicatorDiv.textContent="";
-		}
-		else if(arr.length==1){
-			typingIndicatorDiv.textContent=`${escapeHtml(arr[0])} is typing...`;
-		}
+		if(arr.length==0) typingIndicatorDiv.textContent="";
+		else if(arr.length==1) typingIndicatorDiv.textContent=`${escapeHtml(arr[0])} is typing...`;
 		else{
 			let last=arr.pop();
 			typingIndicatorDiv.textContent=`${arr.map(escapeHtml).join(", ")} and ${escapeHtml(last)} are typing...`;
@@ -171,35 +166,68 @@ document.addEventListener("DOMContentLoaded",()=>{
 	}
 	async function convertToWebP(file){
 		return new Promise((resolve,reject)=>{
-			if(!file.type.startsWith("image/")){
-				reject("Not an image");
-				return;
-			}
 			let img=new Image();
 			img.onload=()=>{
 				let canvas=document.createElement("canvas");
-				let maxWidth=800;
-				let maxHeight=800;
-				let width=img.width;
-				let height=img.height;
-				if(width>maxWidth){
-					height=height*maxWidth/width;
-					width=maxWidth;
-				}
-				if(height>maxHeight){
-					width=width*maxHeight/height;
-					height=maxHeight;
-				}
-				canvas.width=width;
-				canvas.height=height;
+				let max=800;
+				let w=img.width, h=img.height;
+				if(w>max){ h=h*max/w; w=max; }
+				if(h>max){ w=w*max/h; h=max; }
+				canvas.width=w; canvas.height=h;
 				let ctx=canvas.getContext("2d");
-				ctx.drawImage(img,0,0,width,height);
-				let webpData=canvas.toDataURL("image/webp",0.7);
-				resolve(webpData);
+				ctx.drawImage(img,0,0,w,h);
+				resolve(canvas.toDataURL("image/webp",0.7));
 			};
 			img.onerror=()=>reject("Image load failed");
 			img.src=URL.createObjectURL(file);
 		});
+	}
+	async function startRecording(){
+		try{
+			let stream=await navigator.mediaDevices.getUserMedia({audio:true});
+			mediaRecorder=new MediaRecorder(stream);
+			audioChunks=[];
+			mediaRecorder.ondataavailable=(event)=>{
+				audioChunks.push(event.data);
+			};
+			mediaRecorder.onstop=async()=>{
+				let audioBlob=new Blob(audioChunks, {type:"audio/webm"});
+				let reader=new FileReader();
+				reader.onloadend=()=>{
+					let base64=reader.result;
+					if(socket&&socket.readyState===WebSocket.OPEN){
+						socket.send(JSON.stringify({
+							type:"voice",
+							username:currentUser,
+							voice:base64,
+							ip:clientRealIP,
+							timestamp:getCurrentTime()
+						}));
+					}
+					stream.getTracks().forEach(track=>track.stop());
+					voiceStatus.style.display="none";
+					if(voiceBtn) voiceBtn.classList.remove("recording");
+				};
+				reader.readAsDataURL(audioBlob);
+			};
+			mediaRecorder.start();
+			isRecording=true;
+			if(voiceStatus) voiceStatus.style.display="block";
+			if(voiceBtn) voiceBtn.classList.add("recording");
+			setTimeout(()=>{
+				if(isRecording) stopRecording();
+			},30000);
+		}
+		catch(err){
+			console.error(err);
+			showChatError("Microphone access denied.");
+		}
+	}
+	function stopRecording(){
+		if(mediaRecorder&&isRecording){
+			mediaRecorder.stop();
+			isRecording=false;
+		}
 	}
 	async function loggingIn(){
 		let username=usernameInput.value.trim();
@@ -227,12 +255,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 				return;
 			}
 			if(data.type=="typing"){
-				if(data.typing){
-					currentTypers.add(data.username);
-				}
-				else{
-					currentTypers.delete(data.username);
-				}
+				if(data.typing) currentTypers.add(data.username);
+				else currentTypers.delete(data.username);
 				updateTypingIndicator();
 				return;
 			}
@@ -253,12 +277,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 					return;
 				}
 				let newMessage=document.createElement("li");
-				let time=getCurrentTime();
 				newMessage.innerHTML=`<em>${escapeHtml(data.message)}</em>`;
 				newMessage.style.whiteSpace="pre-wrap";
 				newMessage.style.color="gray";
 				newMessage.style.fontStyle="italic";
-				newMessage.classList.add("systemMessage");
 				messagesList.appendChild(newMessage);
 				if(autoScroll) scrollToBottom();
 				checkScrollPosition();
@@ -275,7 +297,6 @@ document.addEventListener("DOMContentLoaded",()=>{
 				else{
 					newMessage.innerHTML=`[Private] ${escapeHtml(data.from)} [${displayIP}] (${time}): ${formattedMessage}`;
 				}
-				newMessage.style.whiteSpace="pre-wrap";
 				newMessage.classList.add("privateMessage");
 				messagesList.appendChild(newMessage);
 				if(autoScroll) scrollToBottom();
@@ -286,15 +307,23 @@ document.addEventListener("DOMContentLoaded",()=>{
 				let newMessage=document.createElement("li");
 				let messageTime=getCurrentTime();
 				let displayIP=data.ip||clientRealIP||"Unknown";
-				let imgHtml=`<img src="${escapeHtml(data.image)}" style="max-width:100%; max-height:200px; border-radius:8px; margin-top:4px; cursor:pointer;" alt="shared image" onclick="window.open(this.src,"_blank")">`;
+				let imgHtml=`<img src="${escapeHtml(data.image)}" style="max-width:100%; max-height:200px; border-radius:8px; margin-top:4px; cursor:pointer;" onclick="window.open(this.src,"_blank")">`;
 				newMessage.innerHTML=`${escapeHtml(data.username)} [${displayIP}] (${messageTime}):<br> ${imgHtml}`;
-				newMessage.style.whiteSpace="normal";
-				if(data.username==currentUser){
-					newMessage.classList.add("userMessage");
-				}
-				else{
-					newMessage.classList.add("otherMessage");
-				}
+				if(data.username==currentUser) newMessage.classList.add("userMessage");
+				else newMessage.classList.add("otherMessage");
+				messagesList.appendChild(newMessage);
+				if(autoScroll) scrollToBottom();
+				checkScrollPosition();
+				return;
+			}
+			if(data.type=="voice"){
+				let newMessage=document.createElement("li");
+				let messageTime=getCurrentTime();
+				let displayIP=data.ip||clientRealIP||"Unknown";
+				let audioHtml=`<audio controls src="${escapeHtml(data.voice)}" style="max-width:100%;"></audio>`;
+				newMessage.innerHTML=`${escapeHtml(data.username)} [${displayIP}] (${messageTime}):<br> ${audioHtml}`;
+				if(data.username==currentUser) newMessage.classList.add("userMessage");
+				else newMessage.classList.add("otherMessage");
 				messagesList.appendChild(newMessage);
 				if(autoScroll) scrollToBottom();
 				checkScrollPosition();
@@ -305,45 +334,32 @@ document.addEventListener("DOMContentLoaded",()=>{
 			let formattedMessage=formatMarkdown(data.message||"");
 			let displayIP=data.ip||clientRealIP||"Unknown";
 			newMessage.innerHTML=`${escapeHtml(data.username)} [${displayIP}] (${messageTime}): ${formattedMessage}`;
-			newMessage.style.whiteSpace="pre-wrap";
-			if(data.username==currentUser){
-				newMessage.classList.add("userMessage");
-			}
-			else{
-				newMessage.classList.add("otherMessage");
-			}
+			if(data.username==currentUser) newMessage.classList.add("userMessage");
+			else newMessage.classList.add("otherMessage");
 			messagesList.appendChild(newMessage);
 			if(autoScroll) scrollToBottom();
 			checkScrollPosition();
 		};
-		socket.onerror=(error)=>{ console.error("WebSocket error",error); };
+		socket.onerror=(e)=>console.error(e);
 		socket.onclose=()=>{
-			console.log("WebSocket closed");
 			if(joinFailed){
 				loginPage.style.display="block";
 				chatPage.style.display="none";
-				if(socket) socket=null;
+				socket=null;
 			}
 		};
-		if(messagesList){
-			messagesList.addEventListener("scroll",checkScrollPosition);
-		}
-		if(scrollBtn){
-			scrollBtn.addEventListener("click",()=>{
-				scrollToBottom();
-				autoScroll=true;
-				if(scrollBtn) scrollBtn.style.display="none";
-			});
-		}
+		messagesList.addEventListener("scroll",checkScrollPosition);
+		scrollBtn.addEventListener("click",()=>{
+			scrollToBottom();
+			autoScroll=true;
+			scrollBtn.style.display="none";
+		});
 		checkScrollPosition();
 	}
-	usernameInput.addEventListener("keyup",(event)=>{
-		if(event.key=="Enter") loggingIn();
-	});
+	usernameInput.addEventListener("keyup",(e)=>e.key=="Enter"&&loggingIn());
 	document.getElementById("joinChat").addEventListener("click",loggingIn);
 	document.getElementById("genUsername").addEventListener("click",async()=>{
-		let newName=await generateRandomUsername();
-		usernameInput.value=newName;
+		usernameInput.value=await generateRandomUsername();
 	});
 	function exportChatLog(){
 		let messages=messagesList.children;
@@ -356,10 +372,6 @@ document.addEventListener("DOMContentLoaded",()=>{
 			let text=li.innerText||li.textContent;
 			if(text.trim()) lines.push(text);
 		}
-		if(lines.length==0){
-			showChatError("No messages to export.");
-			return;
-		}
 		let content=lines.join("\n");
 		let blob=new Blob([content], {type:"text/plain"});
 		let now=new Date();
@@ -370,16 +382,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 		link.click();
 		URL.revokeObjectURL(link.href);
 	}
-	let exportBtn=document.getElementById("exportChat");
-	if(exportBtn) exportBtn.addEventListener("click",exportChatLog);
-	let clearBtn=document.getElementById("clearChat");
-	if(clearBtn){
-		clearBtn.addEventListener("click",()=>{
-			while(messagesList.firstChild){
-				messagesList.removeChild(messagesList.firstChild);
-			}
-		});
-	}
+	document.getElementById("exportChat")?.addEventListener("click",exportChatLog);
+	document.getElementById("clearChat")?.addEventListener("click",()=>{
+		while(messagesList.firstChild) messagesList.removeChild(messagesList.firstChild);
+	});
 	let emojiBtn=document.getElementById("emojiBtn");
 	let emojiPicker=document.getElementById("emojiPicker");
 	if(emojiBtn&&emojiPicker){
@@ -394,54 +400,29 @@ document.addEventListener("DOMContentLoaded",()=>{
 			});
 		});
 		document.addEventListener("click",(e)=>{
-			if(!emojiBtn.contains(e.target)&&!emojiPicker.contains(e.target)){
-				emojiPicker.style.display="none";
-			}
+			if(!emojiBtn.contains(e.target)&&!emojiPicker.contains(e.target)) emojiPicker.style.display="none";
 		});
 	}
 	userMessage.addEventListener("keydown",(e)=>{
-		if(e.ctrlKey&&e.key==="b"){
-			e.preventDefault();
-			wrapSelection(userMessage,"**","**");
-		}
-		else if(e.ctrlKey&&e.key==="i"){
-			e.preventDefault();
-			wrapSelection(userMessage,"*","*");
-		}
-		else if(e.ctrlKey&&e.key==="m"){
-			e.preventDefault();
-			wrapSelection(userMessage,"`","`");
-		}
+		if(e.ctrlKey&&e.key==="b"){ e.preventDefault(); wrapSelection(userMessage,"**","**"); }
+		else if(e.ctrlKey&&e.key==="i"){ e.preventDefault(); wrapSelection(userMessage,"*","*"); }
+		else if(e.ctrlKey&&e.key==="m"){ e.preventDefault(); wrapSelection(userMessage,"`","`"); }
 	});
 	function sendMessageContent(message, isImage=false, imageData=null){
 		if(!socket||socket.readyState!=WebSocket.OPEN){
-			showChatError("Connection lost. Please refresh.");
-			shakeElement(userMessage);
+			showChatError("Connection lost.");
 			return false;
 		}
 		if(isImage){
-			socket.send(JSON.stringify({
-				type:"image",
-				username:currentUser,
-				image:imageData,
-				ip:clientRealIP,
-				timestamp:getCurrentTime()
-			}));
+			socket.send(JSON.stringify({type:"image",username:currentUser,image:imageData,ip:clientRealIP,timestamp:getCurrentTime()}));
 		}
 		else{
 			let privateInfo=parsePrivateMessage(message);
 			if(privateInfo){
-				socket.send(JSON.stringify({
-					type:"private",
-					username:currentUser,
-					target:privateInfo.target,
-					message:privateInfo.content,
-					ip:clientRealIP,
-					timestamp:getCurrentTime()
-				}));
+				socket.send(JSON.stringify({type:"private",username:currentUser,target:privateInfo.target,message:privateInfo.content,ip:clientRealIP,timestamp:getCurrentTime()}));
 			}
 			else{
-				socket.send(JSON.stringify({username:currentUser, message:message, ip:clientRealIP}));
+				socket.send(JSON.stringify({username:currentUser,message:message,ip:clientRealIP}));
 			}
 		}
 		return true;
@@ -450,99 +431,78 @@ document.addEventListener("DOMContentLoaded",()=>{
 		let message=userMessage.value.trim();
 		if(!message) return;
 		if(message=="/users"){
-			if(socket&&socket.readyState==WebSocket.OPEN){
-				socket.send(JSON.stringify({type:"getUsers"}));
-				userMessage.value="";
-			}
+			if(socket&&socket.readyState==WebSocket.OPEN) socket.send(JSON.stringify({type:"getUsers"}));
+			userMessage.value="";
 			return;
 		}
 		if(message=="/help"){
-			let helpText="Available commands:\n/users - list online users\n/msg \"username\" message - send private message\n/help - show this help\n\nKeyboard shortcuts:\nCtrl+B - bold text\nCtrl+I - italic text\nCtrl+M - inline code\n\nDrag & drop an image (≤1MB) to share it (converted to WebP).";
+			let helpText="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/help - this help\n\nKeyboard:\nCtrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, converts to WebP)\nVoice: click 🎤 (30s max)";
 			let fakeEvent={data:JSON.stringify({type:"system",message:helpText})};
 			socket.onmessage(fakeEvent);
 			userMessage.value="";
 			return;
 		}
-		if(sendMessageContent(message)){
-			userMessage.value="";
-		}
+		if(sendMessageContent(message)) userMessage.value="";
 	}
-	userMessage.addEventListener("keypress",(event)=>{
-		if(event.key=="Enter"&&event.shiftKey){
-			event.preventDefault();
-			sendMessage();
-		}
+	userMessage.addEventListener("keypress",(e)=>{
+		if(e.key=="Enter"&&e.shiftKey){ e.preventDefault(); sendMessage(); }
 	});
 	userMessage.addEventListener("input",()=>{
 		if(typingTimeout) clearTimeout(typingTimeout);
 		sendTypingStart();
-		typingTimeout=setTimeout(()=>{
-			sendTypingStop();
-		},1000);
+		typingTimeout=setTimeout(sendTypingStop,1000);
 	});
 	userMessage.addEventListener("blur",()=>{
 		if(typingTimeout) clearTimeout(typingTimeout);
 		sendTypingStop();
 	});
 	document.getElementById("sendMessage").onclick=sendMessage;
-	userMessage.addEventListener("dragover",(e)=>{
-		e.preventDefault();
-	});
+	if(voiceBtn){
+		voiceBtn.addEventListener("click",()=>{
+			if(!isRecording) startRecording();
+			else stopRecording();
+		});
+	}
+	userMessage.addEventListener("dragover",e=>e.preventDefault());
 	userMessage.addEventListener("drop",async(e)=>{
 		e.preventDefault();
 		let file=e.dataTransfer.files[0];
 		if(!file) return;
 		if(!file.type.startsWith("image/")){
-			showChatError("Only image files are allowed.");
+			showChatError("Only images allowed.");
 			return;
 		}
 		if(file.size>1024*1024){
-			showChatError("File too large (max 1 MB).");
+			showChatError("Max 1MB.");
 			return;
 		}
 		try{
-			let webpData=await convertToWebP(file);
-			sendMessageContent(null, true, webpData);
+			let webp=await convertToWebP(file);
+			sendMessageContent(null, true, webp);
 		}
-		catch(err){
-			showChatError("Image conversion failed: "+err);
-		}
+		catch(err){ showChatError("Image conversion failed."); }
 	});
 	window.addEventListener("beforeunload",(e)=>{
 		if(chatPage.style.display=="block"){
 			e.preventDefault();
-			e.returnValue="You are currently in the chat. Leaving will disconnect you.";
-			return "You are currently in the chat. Leaving will disconnect you.";
+			e.returnValue="You will be disconnected.";
 		}
 	});
 	function applyTheme(theme){
-		if(theme=="dark"){
-			document.body.setAttribute("data-theme","dark");
-		}
-		else{
-			document.body.setAttribute("data-theme","light");
-		}
+		document.body.setAttribute("data-theme",theme=="dark"?"dark":"light");
 	}
 	function getSystemTheme(){
 		return window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";
 	}
 	let savedTheme=localStorage.getItem("chatTheme");
-	if(!savedTheme){
-		savedTheme=getSystemTheme();
-	}
+	if(!savedTheme) savedTheme=getSystemTheme();
 	applyTheme(savedTheme);
-	let themeToggle=document.getElementById("themeToggle");
-	if(themeToggle){
-		themeToggle.addEventListener("click",()=>{
-			let currentTheme=document.body.getAttribute("data-theme");
-			let newTheme=currentTheme=="dark"?"light":"dark";
-			applyTheme(newTheme);
-			localStorage.setItem("chatTheme",newTheme);
-		});
-	}
+	document.getElementById("themeToggle").addEventListener("click",()=>{
+		let newTheme=document.body.getAttribute("data-theme")=="dark"?"light":"dark";
+		applyTheme(newTheme);
+		localStorage.setItem("chatTheme",newTheme);
+	});
 	window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",(e)=>{
-		if(!localStorage.getItem("chatTheme")){
-			applyTheme(e.matches?"dark":"light");
-		}
+		if(!localStorage.getItem("chatTheme")) applyTheme(e.matches?"dark":"light");
 	});
 });

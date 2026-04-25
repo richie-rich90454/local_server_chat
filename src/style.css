@@ -242,7 +242,7 @@ body[data-theme="dark"] #sunIcon{
 	gap:0.5rem;
 	align-items:center;
 }
-#emojiBtn,#sendMessage{
+#emojiBtn,#sendMessage, #voiceBtn{
 	display:inline-flex;
 	align-items:center;
 	justify-content:center;
@@ -489,4 +489,28 @@ body[data-theme="dark"] #sunIcon{
 	#messages{
 		max-height:22rem;
 	}
+}
+#voiceBtn:hover{
+	background-color:var(--button-hover);
+}
+#voiceBtn.recording{
+	background-color:var(--error-color);
+	color:#FFF;
+	animation:pulse 1s infinite;
+}
+@keyframes pulse{
+	0%{
+		opacity:1;
+	}
+	50%{
+		opacity:0.6;
+	}
+	100%{
+		opacity:1;
+	}
+}
+#voiceStatus{
+	margin-top:0.3rem;
+	font-size:0.8rem;
+	color:var(--error-color);
 }

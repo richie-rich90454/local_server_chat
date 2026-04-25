@@ -154,6 +154,21 @@ wsServer.on("connection",(ws,req)=>{
 			}
 			return;
 		}
+		else if(data.type=="voice"){
+			const voicePayload={
+				type:"voice",
+				username:data.username,
+				voice:data.voice,
+				ip:ws.clientIP||"Unknown IP",
+				timestamp:data.timestamp
+			};
+			clients.forEach(client=>{
+				if(client.readyState===WebSocket.OPEN){
+					client.send(JSON.stringify(voicePayload));
+				}
+			});
+			return;
+		}
 		clients.forEach((client)=>{
 			if(client.readyState==WebSocket.OPEN){
 				client.send(JSON.stringify({

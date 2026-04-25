@@ -43,6 +43,7 @@
 			<ul id="messages"></ul>
 			<div id="inputArea">
 				<textarea id="userMessage" placeholder="Enter something here 😀 (e.g. How is everybody's day?)&NewLine;Send the message with shift+enter or the &quot;Send Message&quot; button below" rows="5" cols="80"></textarea>
+				<div id="voiceStatus" style="display:none;">Recording...</div>
 				<div id="inputActions">
 					<div id="emojiPickerContainer">
 						<button id="emojiBtn" title="Insert emoji">😀</button>
@@ -51,6 +52,7 @@
 							<span>👍</span> <span>❤️</span> <span>🎉</span> <span>🔥</span> <span>✨</span>
 						</div>
 					</div>
+					<button id="voiceBtn" title="Record voice message">🎤</button>
 					<input type="button" id="sendMessage" value="Send Message">
 				</div>
 			</div>
