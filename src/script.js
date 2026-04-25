@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 	let userIP=document.getElementById("userIp");
 	let messagesList=document.getElementById("messages");
 	let userMessage=document.getElementById("userMessage");
+    let genUsername=document.getElementById("genUsername");
 	let defaultPort=8191;
 	let socket=null;
 	let currentUser="";
@@ -30,6 +31,20 @@ document.addEventListener("DOMContentLoaded",()=>{
 		}
 	}
 	fetchAndDisplayIP();
+    function generateRandomUserame(){
+        let charSet="abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        let randomName="";
+        while (randomName.length<5){
+            let randomCharIndex=Math.floor(Math.random()*charSet.length);
+            let randomChar=charSet[randomCharIndex];
+            while (randomName.includes(randomChar)){
+                randomCharIndex=Math.floor(Math.random()*charSet.length);
+                randomChar=charSet[randomCharIndex];
+            }
+            randomName+=randomChar;
+        }
+        return randomName;
+    }
 	async function loggingIn(){
 		let username=usernameInput.value.trim();
 		if(!username){
@@ -77,7 +92,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 	usernameInput.addEventListener("keyup",(event)=>{
 		if(event.key==="Enter") loggingIn();
 	});
-	document.querySelector("input[type=\"button\"]").addEventListener("click",loggingIn);
+	document.querySelector("#joinChat").addEventListener("click",loggingIn);
 	function sendMessage(){
 		let message=userMessage.value.trim();
 		if(message&&socket&&socket.readyState===WebSocket.OPEN){
@@ -95,5 +110,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 			sendMessage();
 		}
 	});
+    genUsername.addEventListener("click", ()=>{
+        usernameInput.value=generateRandomUserame();
+    });
 	document.getElementById("sendMessage").onclick=sendMessage;
 });
