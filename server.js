@@ -111,6 +111,21 @@ wsServer.on("connection",(ws,req)=>{
 			}
 			return;
 		}
+		else if(data.type=="image"){
+			const imagePayload={
+				type:"image",
+				username:data.username,
+				image:data.image,
+				ip:ws.clientIP||"Unknown IP",
+				timestamp:data.timestamp
+			};
+			clients.forEach(client=>{
+				if(client.readyState===WebSocket.OPEN){
+					client.send(JSON.stringify(imagePayload));
+				}
+			});
+			return;
+		}
 		else if(data.type=="private"){
 			const targetWs=usernameToWs.get(data.target);
 			if(!targetWs||targetWs.readyState!==WebSocket.OPEN){

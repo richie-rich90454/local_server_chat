@@ -250,6 +250,24 @@ document.addEventListener("DOMContentLoaded",()=>{
 				checkScrollPosition();
 				return;
 			}
+			if(data.type=="image"){
+				let newMessage=document.createElement("li");
+				let messageTime=getCurrentTime();
+				let displayIP=data.ip||clientRealIP||"Unknown";
+				let imgHtml=`<img src="${data.image}" style="max-width:100%; max-height:200px; border-radius:8px; margin-top:4px; cursor:pointer;" alt="shared image" onclick="window.open(this.src,"_blank")">`;
+				newMessage.innerHTML=`${escapeHtml(data.username)} [${displayIP}] (${messageTime}):<br> ${imgHtml}`;
+				newMessage.style.whiteSpace="normal";
+				if(data.username==currentUser){
+					newMessage.classList.add("userMessage");
+				}
+				else{
+					newMessage.classList.add("otherMessage");
+				}
+				messagesList.appendChild(newMessage);
+				if(autoScroll) scrollToBottom();
+				checkScrollPosition();
+				return;
+			}
 			let newMessage=document.createElement("li");
 			let messageTime=getCurrentTime();
 			let formattedMessage=formatMarkdown(data.message||"");
@@ -334,7 +352,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 	let emojiPicker=document.getElementById("emojiPicker");
 	if(emojiBtn&&emojiPicker){
 		emojiBtn.addEventListener("click",()=>{
-			emojiPicker.style.display=emojiPicker.style.display=="none"?"flex":"none";
+			emojiPicker.style.display=emojiPicker.style.display=="none"?"grid":"none";
 		});
 		emojiPicker.querySelectorAll("span").forEach(span=>{
 			span.addEventListener("click",()=>{
@@ -363,25 +381,36 @@ document.addEventListener("DOMContentLoaded",()=>{
 			wrapSelection(userMessage,"`","`");
 		}
 	});
-	function sendMessageContent(message){
+	function sendMessageContent(message, isImage=false, imageData=null){
 		if(!socket||socket.readyState!=WebSocket.OPEN){
 			showChatError("Connection lost. Please refresh.");
 			shakeElement(userMessage);
 			return false;
 		}
-		let privateInfo=parsePrivateMessage(message);
-		if(privateInfo){
+		if(isImage){
 			socket.send(JSON.stringify({
-				type:"private",
+				type:"image",
 				username:currentUser,
-				target:privateInfo.target,
-				message:privateInfo.content,
+				image:imageData,
 				ip:clientRealIP,
 				timestamp:getCurrentTime()
 			}));
 		}
 		else{
-			socket.send(JSON.stringify({username:currentUser, message:message, ip:clientRealIP}));
+			let privateInfo=parsePrivateMessage(message);
+			if(privateInfo){
+				socket.send(JSON.stringify({
+					type:"private",
+					username:currentUser,
+					target:privateInfo.target,
+					message:privateInfo.content,
+					ip:clientRealIP,
+					timestamp:getCurrentTime()
+				}));
+			}
+			else{
+				socket.send(JSON.stringify({username:currentUser, message:message, ip:clientRealIP}));
+			}
 		}
 		return true;
 	}
@@ -396,7 +425,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			return;
 		}
 		if(message=="/help"){
-			let helpText="Available commands:\n/users - list online users\n/msg \"username\" message - send private message\n/help - show this help\n\nKeyboard shortcuts:\nCtrl+B - bold text\nCtrl+I - italic text\nCtrl+M - inline code";
+			let helpText="Available commands:\n/users - list online users\n/msg \"username\" message - send private message\n/help - show this help\n\nKeyboard shortcuts:\nCtrl+B - bold text\nCtrl+I - italic text\nCtrl+M - inline code\n\nDrag & drop an image (≤1MB) to share it.";
 			let fakeEvent={data:JSON.stringify({type:"system",message:helpText})};
 			socket.onmessage(fakeEvent);
 			userMessage.value="";
@@ -440,9 +469,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 			return;
 		}
 		let reader=new FileReader();
-		reader.onload=async function(ev){
+		reader.onload=function(ev){
 			let base64=ev.target.result;
-			sendMessageContent(`[Image] ${base64}`);
+			sendMessageContent(null, true, base64);
 		};
 		reader.readAsDataURL(file);
 	});
