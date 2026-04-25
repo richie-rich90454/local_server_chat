@@ -239,6 +239,11 @@ document.addEventListener("DOMContentLoaded",()=>{
 			alert("Connection lost. Please refresh.");
 			return;
 		}
+		if(message=="/users"){
+			socket.send(JSON.stringify({type:"getUsers"}));
+			userMessage.value="";
+			return;
+		}
 		let privateInfo=parsePrivateMessage(message);
 		if(privateInfo){
 			socket.send(JSON.stringify({

@@ -84,20 +84,35 @@ wsServer.on("connection",(ws,req)=>{
 			usernameToWs.set(data.username,ws);
 			broadcastOnlineCount();
 			const userList=getCurrentUsersList();
-			broadcastSystemMessage(`${data.username} joined the chat. Current users: ${userList}`,ws);
+			clients.forEach(client=>{
+				if(client.readyState===WebSocket.OPEN){
+					client.send(JSON.stringify({type:"system",message:`${data.username} joined the chat. Current users: ${userList}`}));
+				}
+			});
+			return;
+		}
+		else if(data.type=="getUsers"){
+			const userList=getCurrentUsersList();
+			if(ws.readyState===WebSocket.OPEN){
+				ws.send(JSON.stringify({type:"system",message:`Online users: ${userList}`}));
+			}
 			return;
 		}
 		else if(data.type=="private"){
 			const targetWs=usernameToWs.get(data.target);
-			if(targetWs&&targetWs.readyState===WebSocket.OPEN){
-				targetWs.send(JSON.stringify({
-					type:"private",
-					from:data.username,
-					message:data.message,
-					ip:ws.clientIP||"Unknown IP",
-					timestamp:data.timestamp
-				}));
+			if(!targetWs||targetWs.readyState!==WebSocket.OPEN){
+				if(ws.readyState===WebSocket.OPEN){
+					ws.send(JSON.stringify({type:"system",message:`User "${data.target}" is not online.`}));
+				}
+				return;
 			}
+			targetWs.send(JSON.stringify({
+				type:"private",
+				from:data.username,
+				message:data.message,
+				ip:ws.clientIP||"Unknown IP",
+				timestamp:data.timestamp
+			}));
 			if(ws.readyState===WebSocket.OPEN){
 				ws.send(JSON.stringify({
 					type:"private",
