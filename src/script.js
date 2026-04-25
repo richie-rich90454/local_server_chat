@@ -9,6 +9,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 	let socket=null;
 	let currentUser="";
 	let clientRealIP="Unknown";
+	let autoScroll=true;
+	let scrollBtn=document.getElementById("scrollToBottomBtn");
 	function getCurrentTime(){
 		let now=new Date();
 		return `${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}:${now.getSeconds().toString().padStart(2,"0")}`;
@@ -24,6 +26,20 @@ document.addEventListener("DOMContentLoaded",()=>{
 	function formatMessage(text){
 		let escaped=escapeHtml(text);
 		return escaped.replace(/\n/g, '<br>');
+	}
+	function scrollToBottom(){
+		messagesList.scrollTop=messagesList.scrollHeight;
+	}
+	function checkScrollPosition(){
+		let isAtBottom=messagesList.scrollHeight-messagesList.scrollTop<=messagesList.clientHeight+10;
+		if(isAtBottom){
+			autoScroll=true;
+			if(scrollBtn) scrollBtn.style.display="none";
+		}
+		else{
+			autoScroll=false;
+			if(scrollBtn) scrollBtn.style.display="flex";
+		}
 	}
 	async function fetchAndDisplayIP(){
 		try{
@@ -57,33 +73,6 @@ document.addEventListener("DOMContentLoaded",()=>{
 			return true;
 		}
 	}
-    function exportChatLog(){
-        let messages=messagesList.children;
-        if (messages.length==0){
-            alert("No messages to export.");
-            return;
-        }
-        let lines=[];
-        for (let li of messages){
-            let text=li.innerText;
-            if (text.trim()){
-                lines.push(text);
-            }
-        }
-        if (lines.length==0){
-            alert("No messages to export.");
-            return;
-        }
-        let content=lines.join("\n");
-        let blob=new Blob([content], {type: "text/plain"});
-        let now=new Date();
-        let timestamp=`${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,"0")}-${now.getDate().toString().padStart(2,"0")}_${now.getHours().toString().padStart(2,"0")}-${now.getMinutes().toString().padStart(2,"0")}-${now.getSeconds().toString().padStart(2,"0")}`;
-        let link=document.createElement("a");
-        link.href=URL.createObjectURL(blob);
-        link.download=`chat_log_${timestamp}.txt`;
-        link.click();
-        URL.revokeObjectURL(link.href);
-    }
 	async function generateRandomUsername(){
 		let charSet="abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 		let randomName="";
@@ -120,6 +109,11 @@ document.addEventListener("DOMContentLoaded",()=>{
 		};
 		socket.onmessage=(event)=>{
 			let data=JSON.parse(event.data);
+			if(data.type=="onlineCount"){
+				let onlineSpan=document.getElementById("onlineCount");
+				if(onlineSpan) onlineSpan.textContent=`(${data.count} online)`;
+				return;
+			}
 			if(data.type=="system"&&data.message&&data.message.includes("Your IP is")){
 				let ip=data.message.split("Your IP is ")[1];
 				if(clientRealIP=="Unknown"){
@@ -142,10 +136,22 @@ document.addEventListener("DOMContentLoaded",()=>{
 				newMessage.classList.add("otherMessage");
 			}
 			messagesList.appendChild(newMessage);
-			messagesList.scrollTop=messagesList.scrollHeight;
+			if(autoScroll) scrollToBottom();
+			checkScrollPosition();
 		};
 		socket.onerror=(error)=>{ console.error("WebSocket error",error); };
 		socket.onclose=()=>{ console.log("WebSocket closed"); };
+		if(messagesList){
+			messagesList.addEventListener("scroll",checkScrollPosition);
+		}
+		if(scrollBtn){
+			scrollBtn.addEventListener("click",()=>{
+				scrollToBottom();
+				autoScroll=true;
+				if(scrollBtn) scrollBtn.style.display="none";
+			});
+		}
+		checkScrollPosition();
 	}
 	usernameInput.addEventListener("keyup",(event)=>{
 		if(event.key=="Enter") loggingIn();
@@ -155,6 +161,33 @@ document.addEventListener("DOMContentLoaded",()=>{
 		let newName=await generateRandomUsername();
 		usernameInput.value=newName;
 	});
+	function exportChatLog(){
+		let messages=messagesList.children;
+		if(messages.length==0){
+			alert("No messages to export.");
+			return;
+		}
+		let lines=[];
+		for(let li of messages){
+			let text=li.innerText||li.textContent;
+			if(text.trim()) lines.push(text);
+		}
+		if(lines.length==0){
+			alert("No messages to export.");
+			return;
+		}
+		let content=lines.join("\n");
+		let blob=new Blob([content], {type:"text/plain"});
+		let now=new Date();
+		let timestamp=`${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,"0")}-${now.getDate().toString().padStart(2,"0")}_${now.getHours().toString().padStart(2,"0")}-${now.getMinutes().toString().padStart(2,"0")}-${now.getSeconds().toString().padStart(2,"0")}`;
+		let link=document.createElement("a");
+		link.href=URL.createObjectURL(blob);
+		link.download=`chat_log_${timestamp}.txt`;
+		link.click();
+		URL.revokeObjectURL(link.href);
+	}
+	let exportBtn=document.getElementById("exportChat");
+	if(exportBtn) exportBtn.addEventListener("click",exportChatLog);
 	function sendMessage(){
 		let message=userMessage.value.trim();
 		if(message&&socket&&socket.readyState==WebSocket.OPEN){
@@ -172,8 +205,5 @@ document.addEventListener("DOMContentLoaded",()=>{
 			sendMessage();
 		}
 	});
-    document.getElementById("exportChat").addEventListener("click", ()=>{
-        exportChatLog();
-    });
 	document.getElementById("sendMessage").onclick=sendMessage;
 });

@@ -42,10 +42,19 @@ app.post('/check-name', (req, res)=>{
 	const isClean=!filter.isProfane(name);
 	res.json({clean: isClean});
 });
-const wsServer=new WebSocketServer({port:portWS, host:"::"});
+const wsServer=new WebSocketServer({port:portWS, host:"0.0.0.0"});
 let clients=[];
+function broadcastOnlineCount(){
+	const count=clients.length;
+	clients.forEach(client=>{
+		if(client.readyState===WebSocket.OPEN){
+			client.send(JSON.stringify({type:"onlineCount", count}));
+		}
+	});
+}
 wsServer.on("connection", (ws, req)=>{
 	clients.push(ws);
+	broadcastOnlineCount();
 	console.log("New connection established"+". Number of client(s) "+clients.length);
 	let clientIP=req.headers["x-forwarded-for"]||req.socket.remoteAddress;
 	if(clientIP&&clientIP.includes("::ffff:")){
@@ -69,6 +78,7 @@ wsServer.on("connection", (ws, req)=>{
 		const index=clients.indexOf(ws);
 		if(index!=-1){
 			clients.splice(index, 1);
+			broadcastOnlineCount();
 			console.log(`Client disconnected. Remaining: ${clients.length}`);
 		}
 	});
