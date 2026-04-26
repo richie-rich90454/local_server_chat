@@ -78,9 +78,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 	}
 	if(!document.getElementById("contextMenu")){
 		let menu=document.createElement("div");menu.id="contextMenu";
-		menu.style.cssText="position:fixed;background-color:var(--background-card);border:1px solid var(--border-card);border-radius:.3rem;padding:.3rem;z-index:1000;display:none;box-shadow:0 2px 6px var(--box-shadow);";
-		let replyOpt=document.createElement("div");replyOpt.id="replyOption";replyOpt.textContent="Reply";replyOpt.style.cssText="padding:.2rem .5rem;cursor:pointer;white-space:nowrap;";
-		let forwardOpt=document.createElement("div");forwardOpt.id="forwardOption";forwardOpt.textContent="Forward to private";forwardOpt.style.cssText="padding:.2rem .5rem;cursor:pointer;white-space:nowrap;";
+		menu.style.cssText="position:fixed;background-color:var(--background-card);border:1px solid var(--border-card);border-radius:.3rem;padding:.3rem;z-index:1000;display:none;box-shadow:0 2px 6px var(--box-shadow);color:var(--text-primary);";
+		let replyOpt=document.createElement("div");replyOpt.id="replyOption";replyOpt.textContent="Reply";replyOpt.style.cssText="padding:.2rem .5rem;cursor:pointer;white-space:nowrap;color:var(--text-primary);";
+		let forwardOpt=document.createElement("div");forwardOpt.id="forwardOption";forwardOpt.textContent="Forward to private";forwardOpt.style.cssText="padding:.2rem .5rem;cursor:pointer;white-space:nowrap;color:var(--text-primary);";
 		menu.appendChild(replyOpt);menu.appendChild(forwardOpt);document.body.appendChild(menu);
 	}
 	let loginPage=document.getElementById("login");

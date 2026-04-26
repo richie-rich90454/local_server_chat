@@ -242,11 +242,29 @@ body[data-theme="dark"] #sunIcon{
 	display:flex;
 	gap:.5rem;
 	align-items:center;
-	flex-wrap:wrap;
+	flex-wrap:nowrap;
 }
 #emojiBtn,
 #codeBlockBtn,
-#voiceBtn,
+#voiceBtn{
+	display:inline-flex;
+	align-items:center;
+	justify-content:center;
+	padding:0 .8rem;
+	height:2.2rem;
+	width:auto;
+	font-size:.9rem;
+	background-color:var(--button-bg);
+	border:1px solid var(--border-card);
+	border-radius:.3rem;
+	cursor:pointer;
+	color:var(--text-primary);
+	line-height:normal;
+	vertical-align:middle;
+	box-sizing:border-box;
+	margin:0;
+	flex-shrink:0;
+}
 #sendMessage{
 	display:inline-flex;
 	align-items:center;
@@ -263,6 +281,8 @@ body[data-theme="dark"] #sunIcon{
 	vertical-align:middle;
 	box-sizing:border-box;
 	margin:0;
+	flex:1;
+	min-width:0;
 }
 #emojiBtn:hover,
 #codeBlockBtn:hover,
