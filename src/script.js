@@ -65,6 +65,7 @@ import hljsDefineZig from "highlightjs-zig";
 import hljsDefineCobol from "highlightjs-cobol";
 hljsDefineZig(hljs);
 hljs.registerLanguage("cobol", hljsDefineCobol);
+
 function createModal(promptMessage, defaultValue, callback){
 	let overlay=document.createElement("div");
 	overlay.className="modal-overlay";
@@ -107,6 +108,7 @@ function createModal(promptMessage, defaultValue, callback){
 	});
 	input.focus();
 }
+
 document.addEventListener("DOMContentLoaded",()=>{
 	let headerControls=document.getElementById("headerControls");
 	if(headerControls&&!document.getElementById("exportFormat")){
@@ -185,37 +187,79 @@ document.addEventListener("DOMContentLoaded",()=>{
 	}
 	function formatMarkdown(text){
 		let escaped=escapeHtml(text);
+		let codeBlocks=[];
 		escaped=escaped.replace(/```(\w*)\n([\s\S]*?)```/g,function(match,lang,code){
-			let highlighted;
-			try{
-				if(lang&&hljs.getLanguage(lang)){
-					highlighted=hljs.highlight(code,{language:lang}).value;
-				}
-				else{
-					highlighted=hljs.highlightAuto(code).value;
-				}
-			}
-			catch(e){
-				highlighted=escapeHtml(code);
-			}
-			return `<pre><code class="hljs">${highlighted}</code></pre>`;
+			let idx=codeBlocks.length;
+			codeBlocks.push({lang,code});
+			return `%%CODEBLOCK${idx}%%`;
 		});
 		escaped=escaped.replace(/`([^`]+)`/g,"<code>$1</code>");
 		escaped=escaped.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>");
 		escaped=escaped.replace(/\*([^*]+)\*/g,"<em>$1</em>");
-		return escaped.replace(/\n/g,"<br>");
+		escaped=escaped.replace(/\n/g,"<br>");
+		escaped=escaped.replace(/%%CODEBLOCK(\d+)%%/g,function(match,idx){
+			let block=codeBlocks[parseInt(idx)];
+			let highlighted;
+			try{
+				if(block.lang&&hljs.getLanguage(block.lang)){
+					highlighted=hljs.highlight(block.code,{language:block.lang}).value;
+				}
+				else{
+					highlighted=hljs.highlightAuto(block.code).value;
+				}
+			}
+			catch(e){
+				highlighted=escapeHtml(block.code);
+			}
+			return `<pre><code class="hljs">${highlighted}</code></pre>`;
+		});
+		return escaped;
 	}
 	function highlightMentions(html,currentUsername){
+		let div=document.createElement("div");
+		div.innerHTML=html;
+		let skipElements=div.querySelectorAll("pre,code");
+		skipElements.forEach(el=>{
+			el.setAttribute("data-skip-mention","true");
+		});
 		let regex=/(?:@([a-zA-Z0-9_]+)|@\"([^\"]+)\"|@&quot;([^&]+)&quot;)/g;
-		return html.replace(regex,function(match,simpleName,quotedName,escapedQuotedName){
-			let username=simpleName||quotedName||escapedQuotedName;
-			if(username===currentUsername){
-				return `<span style="background-color:#FFD700;color:#000;border-radius:4px;padding:0 2px;">@${escapeHtml(username)}</span>`;
-			}
-			else{
-				return `<span style="background-color:#E0E0E0;color:#000;border-radius:4px;padding:0 2px;">@${escapeHtml(username)}</span>`;
+		let walker=document.createTreeWalker(div,NodeFilter.SHOW_TEXT,{
+			acceptNode:function(node){
+				let parent=node.parentElement;
+				while(parent){
+					if(parent.hasAttribute&&parent.hasAttribute("data-skip-mention")){
+						return NodeFilter.FILTER_SKIP;
+					}
+					parent=parent.parentElement;
+				}
+				return NodeFilter.FILTER_ACCEPT;
 			}
 		});
+		let nodes=[];
+		while(walker.nextNode()){nodes.push(walker.currentNode);}
+		for(let node of nodes){
+			let text=node.nodeValue;
+			let newText=text.replace(regex,function(match,simpleName,quotedName,escapedQuotedName){
+				let username=simpleName||quotedName||escapedQuotedName;
+				if(username===currentUsername){
+					return `<span style="background-color:#FFD700; color:#000; border-radius:4px; padding:0 2px;">@${escapeHtml(username)}</span>`;
+				}
+				else{
+					return `<span style="background-color:#E0E0E0; color:#000; border-radius:4px; padding:0 2px;">@${escapeHtml(username)}</span>`;
+				}
+			});
+			if(newText!==text){
+				let span=document.createElement("span");
+				span.innerHTML=newText;
+				node.parentNode.replaceChild(span,node);
+				while(span.firstChild){
+					span.parentNode.insertBefore(span.firstChild,span);
+				}
+				span.remove();
+			}
+		}
+		skipElements.forEach(el=>el.removeAttribute("data-skip-mention"));
+		return div.innerHTML;
 	}
 	function scrollToBottom(){
 		messagesList.scrollTop=messagesList.scrollHeight;
@@ -660,7 +704,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			return;
 		}
 		if(msg==="/help"){
-			let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\"\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
+			let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
 			let fake={data:JSON.stringify({type:"system",message:help})};
 			socket.onmessage(fake);
 			userMessage.value="";

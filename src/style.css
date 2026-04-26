@@ -169,6 +169,11 @@ li:last-child{
 	border:1px solid var(--border-input);
 	border-radius:.3rem;
 }
+pre code.hljs *,
+pre code,
+code{
+	font-style:normal;
+}
 pre code.hljs{
 	display:block;
 	overflow-x:auto;
