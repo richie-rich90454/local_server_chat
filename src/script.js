@@ -186,18 +186,18 @@ document.addEventListener("DOMContentLoaded",()=>{
 		});
 	}
 	function formatMarkdown(text){
-		let escaped=escapeHtml(text);
 		let codeBlocks=[];
-		escaped=escaped.replace(/```(\w*)[ \t]*\n?([\s\S]*?)```/g,function(match,lang,code){
+		let withoutCode=text.replace(/^[ \t]*```(\w*)\s*\n([\s\S]*?)\n[ \t]*```/gm,function(match,lang,code){
 			let idx=codeBlocks.length;
-			codeBlocks.push({lang,code});
-			return `%%CODEBLOCK${idx}%%`;
+			codeBlocks.push({lang:lang||"",code});
+			return `__CODEBLOCK_${idx}__`;
 		});
+		let escaped=escapeHtml(withoutCode);
 		escaped=escaped.replace(/`([^`]+)`/g,"<code>$1</code>");
 		escaped=escaped.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>");
 		escaped=escaped.replace(/\*([^*]+)\*/g,"<em>$1</em>");
 		escaped=escaped.replace(/\n/g,"<br>");
-		escaped=escaped.replace(/%%CODEBLOCK(\d+)%%/g,function(match,idx){
+		escaped=escaped.replace(/__CODEBLOCK_(\d+)__/g,function(match,idx){
 			let block=codeBlocks[parseInt(idx)];
 			let highlighted;
 			try{
@@ -219,9 +219,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 		let div=document.createElement("div");
 		div.innerHTML=html;
 		let skipElements=div.querySelectorAll("pre,code");
-		skipElements.forEach(el=>{
-			el.setAttribute("data-skip-mention","true");
-		});
+		skipElements.forEach(el=>{el.setAttribute("data-skip-mention","true");});
 		let regex=/(?:@([a-zA-Z0-9_]+)|@\"([^\"]+)\"|@&quot;([^&]+)&quot;)/g;
 		let walker=document.createTreeWalker(div,NodeFilter.SHOW_TEXT,{
 			acceptNode:function(node){
@@ -538,6 +536,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			console.log("WebSocket closed");
 			if(!intentionalClose&&currentUser&&chatPage.style.display==="block"){
 				showChatError("Connection lost. Reconnecting...");
+				clearTimeout(reconnectTimer);
 				reconnectTimer=setTimeout(()=>{
 					reconnectAttempts++;
 					let delay=Math.min(3000,1000*Math.pow(1.5,reconnectAttempts));
