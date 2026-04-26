@@ -514,3 +514,14 @@ body[data-theme="dark"] #sunIcon{
 	font-size:0.8rem;
 	color:var(--error-color);
 }
+.reply-btn{
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-left: 0.5rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+.reply-btn:hover{
+    opacity: 1;
+}

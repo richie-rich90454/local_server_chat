@@ -386,6 +386,23 @@ document.addEventListener("DOMContentLoaded",()=>{
 			else{
 				li.classList.add("otherMessage");
 			}
+			let replySpan=document.createElement("span");
+			replySpan.textContent=" 💬";
+			replySpan.className="reply-btn";
+			replySpan.title="回复此消息";
+			let rawMessageText=data.message;
+			let senderUsername=data.username;
+			replySpan.onclick=()=>{
+				let quotedText=`> @${senderUsername}: ${rawMessageText}\n`;
+				let currentCursor=userMessage.selectionStart;
+				let currentVal=userMessage.value;
+				let newVal=currentVal.substring(0,currentCursor)+quotedText+currentVal.substring(currentCursor);
+				userMessage.value=newVal;
+				userMessage.selectionStart=currentCursor+quotedText.length;
+				userMessage.selectionEnd=currentCursor+quotedText.length;
+				userMessage.focus();
+			};
+			li.appendChild(replySpan);
 			messagesList.appendChild(li);
 			if(autoScroll){
 				scrollToBottom();
@@ -556,7 +573,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			return;
 		}
 		if(message==="/help"){
-			let helpText="Available commands:\n/users - list online users\n/msg \"username\" message - send private message\n/help - show this help\n\nKeyboard shortcuts:\nCtrl+B - bold\nCtrl+I - italic\nCtrl+M - inline code\n\nDrag & drop image (≤1MB, converted to WebP)\n\nMentions: @username or @\"username with spaces\" (e.g., @\"John Doe\")";
+			let helpText="Available commands:\n/users - list online users\n/msg \"username\" message - send private message\n/help - show this help\n\nKeyboard shortcuts:\nCtrl+B - bold\nCtrl+I - italic\nCtrl+M - inline code\n\nDrag & drop image (≤1MB, converted to WebP)\n\nMentions: @username or @\"username with spaces\"\n\nClick 💬 on any message to reply with quoted text.";
 			let fakeEvent={data:JSON.stringify({type:"system",message:helpText})};
 			socket.onmessage(fakeEvent);
 			userMessage.value="";
