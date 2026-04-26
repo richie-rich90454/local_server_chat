@@ -742,8 +742,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 	}
 	let hljsTheme=document.getElementById("hljs-theme");
 	function setHighlightTheme(theme){
-		let lightTheme="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css";
-		let darkTheme="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css";
+		let lightTheme="/vs.min.css";
+		let darkTheme="/vs2015.min.css";
 		if(hljsTheme){
 			hljsTheme.href=theme==="dark"?darkTheme:lightTheme;
 		}
