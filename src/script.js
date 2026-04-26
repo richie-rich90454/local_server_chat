@@ -188,7 +188,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 	function formatMarkdown(text){
 		let escaped=escapeHtml(text);
 		let codeBlocks=[];
-		escaped=escaped.replace(/```(\w*)\n([\s\S]*?)```/g,function(match,lang,code){
+		escaped=escaped.replace(/```(\w*)[ \t]*\n?([\s\S]*?)```/g,function(match,lang,code){
 			let idx=codeBlocks.length;
 			codeBlocks.push({lang,code});
 			return `%%CODEBLOCK${idx}%%`;
