@@ -46,7 +46,7 @@ const wsServer=new WebSocketServer({port:portWS,host:"::"});
 let clients=[];
 let usernameToWs=new Map();
 const rateLimitMap=new Map();
-const RATE_LIMIT=3;
+const RATE_LIMIT=5;
 const RATE_WINDOW=1000;
 const BAN_DURATION=5000;
 
