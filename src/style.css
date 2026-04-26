@@ -118,7 +118,7 @@ textarea{
 	text-align:left;
 	overflow-y:auto;
 	-webkit-overflow-scrolling:touch;
-	max-height:10rem;
+	max-height:15rem;
 	margin-bottom:.5rem;
 	padding:.5rem;
 	background:var(--background-card);
@@ -506,13 +506,82 @@ body[data-theme="dark"] #sunIcon{
 .modal-box button:hover{
 	background:var(--button-hover);
 }
+#messages::-webkit-scrollbar,
+li::-webkit-scrollbar,
+textarea::-webkit-scrollbar,
+pre code.hljs::-webkit-scrollbar{
+	width:8px;
+	height:8px;
+}
+#messages::-webkit-scrollbar-track,
+li::-webkit-scrollbar-track,
+textarea::-webkit-scrollbar-track,
+pre code.hljs::-webkit-scrollbar-track{
+	background:var(--background-card);
+	border-radius:4px;
+}
+#messages::-webkit-scrollbar-thumb,
+li::-webkit-scrollbar-thumb,
+textarea::-webkit-scrollbar-thumb,
+pre code.hljs::-webkit-scrollbar-thumb{
+	background:var(--border-input);
+	border-radius:4px;
+}
+#messages::-webkit-scrollbar-thumb:hover,
+li::-webkit-scrollbar-thumb:hover,
+textarea::-webkit-scrollbar-thumb:hover,
+pre code.hljs::-webkit-scrollbar-thumb:hover{
+	background:var(--text-secondary);
+}
+#messages,
+li,
+textarea,
+pre code.hljs{
+	scrollbar-width:thin;
+	scrollbar-color:var(--border-input) var(--background-card);
+}
+@media (hover:none) and (pointer:coarse){
+	#messages::-webkit-scrollbar,
+	li::-webkit-scrollbar,
+	textarea::-webkit-scrollbar,
+	pre code.hljs::-webkit-scrollbar{
+		width:12px;
+		height:12px;
+	}
+	#messages,
+	li,
+	textarea,
+	pre code.hljs{
+		scrollbar-width:auto;
+	}
+}
+@media (prefers-color-scheme: dark){
+	#messages::-webkit-scrollbar-track,
+	li::-webkit-scrollbar-track,
+	textarea::-webkit-scrollbar-track,
+	pre code.hljs::-webkit-scrollbar-track{
+		background:var(--background-card);
+	}
+	#messages::-webkit-scrollbar-thumb,
+	li::-webkit-scrollbar-thumb,
+	textarea::-webkit-scrollbar-thumb,
+	pre code.hljs::-webkit-scrollbar-thumb{
+		background:var(--border-input);
+	}
+	#messages,
+	li,
+	textarea,
+	pre code.hljs{
+		scrollbar-color:var(--border-input) var(--background-card);
+	}
+}
 @media (max-width:768px){
 	#login,#chatUI{
 		padding:1rem;
 		max-width:95%;
 	}
 	#messages{
-		max-height:10rem;
+		max-height:15rem;
 		font-size:.9rem;
 	}
 	#chatHeader h2{

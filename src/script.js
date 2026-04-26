@@ -893,12 +893,38 @@ document.addEventListener("DOMContentLoaded",()=>{
 			const Chess=chessModule.Chess||chessModule.default;
 			if(!Chess) throw new Error("Chess module not loaded");
 			let game=new Chess();
-			let selectedSquare=null;
 			let boardDiv=document.createElement("div");
-			boardDiv.style.cssText="display:grid;grid-template-columns:repeat(8,1fr);width:400px;height:400px;margin:0 auto;";
+			boardDiv.style.cssText="display:grid;grid-template-columns:repeat(8,1fr);width:min(400px,70vw);height:min(400px,70vw);margin:0 auto;";
 			let statusDiv=document.createElement("div");
-			statusDiv.style.cssText="margin-top:10px;text-align:center;color:var(--text-primary);";
-			statusDiv.textContent="White to move";
+			statusDiv.style.cssText="margin-top:10px;text-align:center;color:var(--text-primary);font-size:0.9rem;";
+			statusDiv.textContent="Your turn (White)";
+			let selectedSquare=null;
+			let aiThinking=false;
+			function getRandomMove(){
+				let moves=game.moves({verbose:true});
+				if(moves.length===0) return null;
+				let randomIndex=Math.floor(Math.random()*moves.length);
+				return moves[randomIndex];
+			}
+			function makeAIMove(){
+				if(aiThinking) return;
+				if(game.game_over()){
+					statusDiv.textContent=game.in_checkmate()?"Checkmate! "+(game.turn()==="w"?"Black wins":"White wins"):"Game over!";
+					return;
+				}
+				if(game.turn()==="b"){
+					aiThinking=true;
+					setTimeout(()=>{
+						let move=getRandomMove();
+						if(move){
+							game.move(move);
+							renderBoard();
+							statusDiv.textContent=game.game_over()?"Game over! "+(game.in_checkmate()?"Checkmate! ":"")+(game.turn()==="w"?"Black wins":"White wins"):"Your turn (White)";
+						}
+						aiThinking=false;
+					},100);
+				}
+			}
 			function renderBoard(){
 				let board=game.board();
 				boardDiv.innerHTML="";
@@ -907,7 +933,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 						let square=String.fromCharCode(97+j)+(8-i);
 						let piece=board[i][j];
 						let squareDiv=document.createElement("div");
-						squareDiv.style.cssText=`width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;cursor:pointer;background-color:${(i+j)%2==0?"#f0d9b5":"#b58863"};${selectedSquare===square?"border:2px solid red;":""}`;
+						squareDiv.style.cssText=`width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:min(2rem,6vw);cursor:pointer;background-color:${(i+j)%2==0?"#f0d9b5":"#b58863"};${selectedSquare===square?"border:2px solid red;box-sizing:border-box;":""}`;
 						if(piece){
 							let pieceChar="";
 							switch(piece.type){
@@ -921,9 +947,18 @@ document.addEventListener("DOMContentLoaded",()=>{
 							squareDiv.textContent=pieceChar;
 						}
 						squareDiv.onclick=()=>{
+							if(aiThinking) return;
+							if(game.game_over()){
+								statusDiv.textContent="Game over. Close and reopen to play new game.";
+								return;
+							}
+							if(game.turn()!=="w"){
+								statusDiv.textContent="Computer is thinking...";
+								return;
+							}
 							if(selectedSquare===null){
 								let pieceAtSquare=game.get(square);
-								if(pieceAtSquare&&pieceAtSquare.color===game.turn()){
+								if(pieceAtSquare&&pieceAtSquare.color==="w"){
 									selectedSquare=square;
 									renderBoard();
 								}
@@ -932,7 +967,12 @@ document.addEventListener("DOMContentLoaded",()=>{
 								if(move){
 									selectedSquare=null;
 									renderBoard();
-									statusDiv.textContent=game.game_over()?"Game over! "+(game.in_checkmate()?"Checkmate! ":"")+(game.turn()==="w"?"Black wins":"White wins"):(game.turn()==="w"?"White to move":"Black to move");
+									if(game.game_over()){
+										statusDiv.textContent=game.in_checkmate()?"Checkmate! You win!":(game.in_stalemate()?"Stalemate!":"Game over!");
+									}else{
+										statusDiv.textContent="Computer is thinking...";
+										makeAIMove();
+									}
 								}else{
 									selectedSquare=null;
 									renderBoard();
@@ -941,6 +981,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 						};
 						boardDiv.appendChild(squareDiv);
 					}
+				}
+				if(!game.game_over() && game.turn()==="b" && !aiThinking){
+					makeAIMove();
 				}
 			}
 			renderBoard();
@@ -965,7 +1008,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			let modal=document.createElement("div");
 			modal.style.cssText="background:var(--background-card);border:2px solid var(--border-card);border-radius:.5rem;padding:1rem;max-width:500px;width:90%;box-shadow:0 4px 20px var(--box-shadow);";
 			let title=document.createElement("h3");
-			title.textContent="Chess Game";
+			title.textContent="Chess Game (Human vs Computer)";
 			title.style.marginTop="0";
 			title.style.color="var(--text-primary)";
 			let boardContainer=document.createElement("div");
@@ -1024,7 +1067,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			return;
 		}
 		if(msg==="/help"){
-			let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/egg - play 2048 game\n/chess - play Chess game\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
+			let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/egg - play 2048 game\n/chess - play Chess vs Computer\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
 			let fake={data:JSON.stringify({type:"system",message:help})};
 			socket.onmessage(fake);
 			userMessage.value="";
