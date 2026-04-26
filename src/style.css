@@ -12,9 +12,9 @@
 	--message-other:#000;
 	--message-private:#0066CC;
 	--message-border:#EEE;
-	--scroll-btn-bg:#000;
-	--scroll-btn-color:#FFF;
-	--scroll-btn-hover:#333;
+	--scroll-btn-bg:#FFF;
+	--scroll-btn-color:#000;
+	--scroll-btn-hover:#E0E0E0;
 	--error-color:#EC1414;
 	--export-bg:#F0F0F0;
 	--online-color:#000;
@@ -39,7 +39,7 @@ body[data-theme="dark"]{
 	--message-border:#444;
 	--scroll-btn-bg:#444;
 	--scroll-btn-color:#FFF;
-	--scroll-btn-hover:#555;
+	--scroll-btn-hover: #4A4A4A;
 	--error-color:#FFAAAA;
 	--export-bg:#3A3A3A;
 	--online-color:#CCCCCC;
@@ -378,9 +378,11 @@ body[data-theme="dark"] #sunIcon{
 	align-items:center;
 	justify-content:center;
 	z-index:10;
+	transition:background-color 0.2s, transform 0.1s;
 }
 #scrollToBottomBtn:hover{
 	background-color:var(--scroll-btn-hover);
+	transform:scale(1.05);
 }
 .chat-error{
 	position:fixed;
