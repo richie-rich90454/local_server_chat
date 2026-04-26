@@ -1029,7 +1029,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			userMessage.value="";
 			return;
 		}
-		if(msg==="/egg"){
+		if(msg==="/2048"){
 			if(document.getElementById("gameOverlay")){
 				showChatError("Game is already open");
 				return;
@@ -1067,7 +1067,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			return;
 		}
 		if(msg==="/help"){
-			let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/egg - play 2048 game\n/chess - play Chess vs Computer\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
+			let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/2048 - play 2048 game\n/chess - play Chess vs Computer\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
 			let fake={data:JSON.stringify({type:"system",message:help})};
 			socket.onmessage(fake);
 			userMessage.value="";

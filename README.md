@@ -12,11 +12,14 @@ A fully anonymous, lightweight, and effective chatroom for users on the same loc
 * [Prerequisites](#prerequisites)
 * [Installation](#installation)
 * [Usage](#usage)
+* [Commands & Shortcuts](#commands--shortcuts)
 * [Network Accessibility](#network-accessibility)
 * [Technologies](#technologies)
+* [Dependencies](#dependencies)
 * [Favicon](#favicon)
 * [Disclaimer](#disclaimer)
 * [License](#license)
+* [Support](#support-the-project)
 
 ## Purpose
 
@@ -24,12 +27,30 @@ This project provides a simple chat application that operates entirely within a 
 
 ## Features
 
-* **Fully Anonymous:** No user authentication, no localStorage, no cookies. Users join with any username.
-* **Random Username Generator:** Creates 5‑character unique‑letter usernames (a‑z, 0‑9, A‑Z). Built‑in profanity filter (via `bad‑words`) automatically rejects inappropriate names and retries until a clean name is found.
-* **Real‑Time Messaging:** Built with WebSocket for instant communication.
-* **Local IP Detection:** Automatically detects and displays the client’s local IP address using `/get-client-ip` and WebSocket system messages.
-* **Cross‑Platform & Mobile Optimized:** Works on Windows, Linux, macOS, and adapts to iPad/iPhone screens with touch‑friendly buttons and improved spacing.
-* **Message Formatting:** Preserves newlines, multiple spaces, and HTML‑escapes user input for safety.
+* **Fully Anonymous:** No authentication, no localStorage, no cookies. Users join with any username.
+* **Random Username Generator:** Creates 5‑character unique‑letter usernames (a‑z, 0‑9, A‑Z). Built‑in profanity filter (via `bad-words`) automatically rejects inappropriate names and retries until a clean name is found.
+* **Real‑Time Messaging:** WebSocket (port 8191) for instant communication.
+* **Local IP Detection:** Automatically detects and displays the client's local IP address using `/get-client-ip` and WebSocket system messages.
+* **Message Formatting:** Preserves newlines, multiple spaces, and HTML‑escapes user input.
+* **Markdown‑lite Support:** **bold**, *italic*, inline `code`, and fenced code blocks.
+* **Syntax Highlighting:** Over 30 languages (C, C++, Python, Java, Go, Rust, Fortran, COBOL, Zig, assembly, and more) via `highlight.js`.
+* **Private Messaging:** `/msg "username" message` – double quotes required for names with spaces.
+* **Typing Indicator:** Shows who is typing in real time.
+* **Dark / Light Theme:** System preference detection plus manual toggle.
+* **Emoji Picker & Code Block Button:** Quick insertion of emojis or markdown code blocks.
+* **Image Sharing:** Drag & drop images (converted to WebP, resized to ≤800px, max 1 MB).
+* **Voice Messages:** Requires HTTPS or localhost (or browser flag). Record and send audio.
+* **Chat Export:** Export conversation as TXT, JSON, or HTML.
+* **Clear Chat:** Client‑side clearing of message list.
+* **Reply & Forward:** Right‑click any message to reply or forward to another user.
+* **Auto‑scroll:** Smart scrolling with a floating “jump to bottom” button.
+* **Reconnect Logic:** Automatically retries when WebSocket disconnects.
+* **Rate Limiting:** 3 messages per second; exceeding results in a 5‑second temporary ban.
+* **Join/Leave Notifications:** Shows who joined/left and lists current users.
+* **Built‑in Games:**
+  * `/2048` – Play 2048.
+  * `/chess` – Play chess against a computer opponent (random legal moves).
+* **Mobile Optimized:** Responsive layout, larger touch targets, custom scrollbars.
 
 ## Prerequisites
 
@@ -48,11 +69,12 @@ This project provides a simple chat application that operates entirely within a 
    ```bash
    cd local_server_chat
    ```
-3. Install dependencies:
+3. Install dependencies (all dependencies are automatically fetched from `package.json`):
 
    ```bash
    npm install
    ```
+   *To install exactly the versions specified in `package-lock.json`, use `npm ci` (faster and more reliable for CI).*
 
 ## Usage
 
@@ -75,7 +97,27 @@ This project provides a simple chat application that operates entirely within a 
 2. The IP address field will automatically show your local IP.
 3. Click **Join the chat**.
 4. Type messages and press **Shift+Enter** or click **Send Message**.
-5. Messages preserve line breaks and spaces. Your own messages appear in red.
+5. Messages preserve line breaks, spaces, and Markdown formatting. Your own messages appear in red.
+
+## Commands & Shortcuts
+
+Type any of the following commands in the message input and press **Shift+Enter** (or click Send Message):
+
+| Command | Description |
+|---------|-------------|
+| `/users` | List all online users. |
+| `/msg "username" message` | Send a private message (use double quotes around username if it contains spaces). |
+| `/2048` | Play a 2048 game in a modal window. |
+| `/chess` | Play chess against the computer (random legal moves). |
+| `/help` | Display available commands and keyboard shortcuts. |
+
+**Keyboard shortcuts** (inside the message textarea):
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+B` | Wrap selected text with `**bold**`. |
+| `Ctrl+I` | Wrap selected text with `*italic*`. |
+| `Ctrl+M` | Wrap selected text with `` `code` ``. |
 
 ## Network Accessibility
 
@@ -117,10 +159,24 @@ http://<host-machine-ip>:2047
 
 ## Technologies
 
-* **Server:** Node.js, Express, [ws](https://www.npmjs.com/package/ws), [bad-words](https://www.npmjs.com/package/bad-words) for profanity filtering
-* **Client:** HTML5, CSS3, JavaScript (ES6 modules, async/await)
-* **Styling:** Custom CSS with [Noto Sans](https://fonts.google.com/specimen/Noto+Sans) and mobile‑friendly media queries
-* **Build Tool:** [Vite](https://vitejs.dev/) for fast development and optimized production builds
+* **Server:** Node.js, Express, [ws](https://www.npmjs.com/package/ws), [bad-words](https://www.npmjs.com/package/bad-words)
+* **Client:** HTML5, CSS3, JavaScript (ES6 modules), [highlight.js](https://highlightjs.org/), [chess.js](https://github.com/jhlywa/chess.js)
+* **Styling:** Custom CSS with CSS variables, [Noto Sans](https://fonts.google.com/specimen/Noto+Sans), responsive design
+* **Build Tool:** [Vite](https://vitejs.dev/) with Lightning CSS transformer
+* **Games:** Self‑contained 2048 and chess (human vs computer)
+
+## Dependencies
+
+All dependencies are listed in `package.json` and are automatically installed with `npm install`. Key runtime dependencies include:
+
+- `express` – HTTP server
+- `ws` – WebSocket server
+- `bad-words` – Profanity filter for usernames
+- `highlight.js` – Syntax highlighting for code blocks
+- `chess.js` – Chess game logic
+- `highlightjs-zig`, `highlightjs-cobol` – Additional language support
+
+Development dependencies include Vite and its HTML plugin.
 
 ## Favicon
 
@@ -140,56 +196,3 @@ If you find this project useful or interesting, please consider giving it a **st
 It helps others discover the project and motivates continued development.
 
 [![Star History Chart](https://api.star-history.com/svg?repos=richie-rich90454/local_server_chat&type=Date)](https://star-history.com/#richie-rich90454/local_server_chat)
-
-now update README.md with all of my changes and fully polish it (no emojis)
-use the tone and writing style of my writing of my handwritten thig here before:
-Well, the question comes on how to use it.
-First, you git clone the entire repo.
-Next, you cd to the directory of the repo.
-Next, you type node server.js.
-Then, you click on the UI option (w/ port 2047).
-Finally, you could use the app.
-
-By the way, if you want to make this accessible in your local network, the whole point of this I guess, (e.g. the one given to your devices by your router starting with 192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8 etc.), you would need to allow traffic (inbound) through the ports 2047 and 8191 (I have no apparent reason for choosing these; I guess it is because they are either a Mersenne Composite or Mersenne Prime number).
-    For Linux (Debian), this is rather easy; you just need to sudo ufw allow 2047 and sudo ufw allow 8191.
-    For Windows, you would need to go to firewall settings and allow inbound traffic from these two ports with TCP in the local network.
-To access the ui, you simply type http://(machine you are running the ws server on):2047 on a machine under the same router.
-
-Favicon generated by favicon.io
-
-Purpose/Description:
-This project aims to bring a public, fully anonymous, lightweight, and effective chatroom for people under the same router (i.e. under the same network) to chat in and exchange their thoughts. This project accomplishes this via JavaScript (including Node.js modules) and HTML (with CSS for simplistic styling) and is therefore extremely lightweight to deploy and rather clear and concise to use due to its simplicity. This project would therefore mostly relate to prompt 2, as this program allows people to connect with each other and exchange their thoughts. For instance, people on the same network could quickly inform each other of a small task such as bringing a cup of coffee for them rather than (frankly) wasting internet bandwidth and electricity for the message to go potentially cross-seas to a social media server and then back, which is slow, wastes bandwidth, and require an internet connection (ISP service). This, in the coffee example, might allow the two people to develop a friendship and probably bring an overall more cooperative environment to work or study in due to messages being reliably delivered, which is definitely beneficial to society. Therefore, the program does have a practical use case and could offer quantifiable benefits. Additionally, this program could have a lot of further potential, as it could be easily modified for use with a public IP (if the user has one) and be a potential alternative to traditional social media (the structure is not technically Peer-to-Peer due to it requiring a user to host a server, but it behaves in a similar way with anonymity and security).
-taek note of this
-{
-    "name": "local_server_chat",
-    "version": "2.0.0",
-    "type": "module",
-    "dependencies": {
-        "2048-webcomponent": "^1.1.0",
-        "bad-words": "^4.0.0",
-        "express": "^5.2.1",
-        "highlight.js": "^11.11.1",
-        "highlightjs-cobol": "^0.3.3",
-        "highlightjs-zig": "^1.0.2",
-        "ws": "^8.20.0"
-    },
-    "main": "server.js",
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
-        "start": "node server.js",
-        "dev": "vite dev",
-        "build": "vite build"
-    },
-    "keywords": [
-        "WebSocket",
-        "Chat",
-        "Intranet chat"
-    ],
-    "author": "richie-rich90454",
-    "license": "Apache-2.0",
-    "description": "It should just be a chat app.",
-    "devDependencies": {
-        "vite": "^8.0.10",
-        "vite-plugin-html": "^3.2.2"
-    }
-}
