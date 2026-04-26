@@ -16,16 +16,31 @@ document.addEventListener("DOMContentLoaded",()=>{
 	let typingTimeout=null;
 	let currentTypers=new Set();
 	let typingIndicatorDiv=document.getElementById("typingIndicator");
-
-	// Voice recording variables
-	let mediaRecorder=null;
-	let audioChunks=[];
-	let isRecording=false;
-	let voiceBtn=document.getElementById("voiceBtn");
-	let voiceStatus=document.getElementById("voiceStatus");
+	let reconnectAttempts=0;
+	let reconnectTimer=null;
+	let intentionalClose=false;
+	let timeSpan=document.createElement("span");
+	timeSpan.id="currentTime";
+	timeSpan.style.marginLeft="1rem";
+	timeSpan.style.fontSize="0.8rem";
+	let onlineSpan=document.getElementById("onlineCount");
+	if(onlineSpan&&onlineSpan.parentNode){
+		onlineSpan.parentNode.appendChild(timeSpan);
+	}
+	function updateClock(){
+		let now=new Date();
+		let str=now.toLocaleTimeString([],{hour:"2-digit", minute:"2-digit", second:"2-digit"});
+		if(timeSpan){
+			timeSpan.textContent=str;
+		}
+	}
+	updateClock();
+	setInterval(updateClock,1000);
 
 	function showChatError(msg){
-		if(!chatErrorDiv) return;
+		if(!chatErrorDiv){
+			return;
+		}
 		chatErrorDiv.textContent=msg;
 		chatErrorDiv.classList.add("show");
 		setTimeout(()=>{
@@ -33,7 +48,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 		},3000);
 	}
 	function shakeElement(el){
-		if(!el) return;
+		if(!el){
+			return;
+		}
 		el.classList.add("shake");
 		setTimeout(()=>{
 			el.classList.remove("shake");
@@ -45,18 +62,36 @@ document.addEventListener("DOMContentLoaded",()=>{
 	}
 	function escapeHtml(str){
 		return str.replace(/[&<>]/g, function(m){
-			if(m=="&") return "&amp;";
-			if(m=="<") return "&lt;";
-			if(m==">") return "&gt;";
+			if(m=='&'){
+				return '&amp;';
+			}
+			if(m=='<'){
+				return '&lt;';
+			}
+			if(m=='>'){
+				return '&gt;';
+			}
 			return m;
 		});
 	}
 	function formatMarkdown(text){
 		let escaped=escapeHtml(text);
-		escaped=escaped.replace(/`([^`]+)`/g, "<code>$1</code>");
-		escaped=escaped.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-		escaped=escaped.replace(/\*([^*]+)\*/g, "<em>$1</em>");
-		return escaped.replace(/\n/g, "<br>");
+		escaped=escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+		escaped=escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+		escaped=escaped.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+		return escaped.replace(/\n/g, '<br>');
+	}
+	function highlightMentions(html, currentUsername){
+		let regex=/(?:@([a-zA-Z0-9_]+)|@\"([^\"]+)\"|@&quot;([^&]+)&quot;)/g;
+		return html.replace(regex, function(match, simpleName, quotedName, escapedQuotedName){
+			let username=simpleName||quotedName||escapedQuotedName;
+			if(username===currentUsername){
+				return `<span style="background-color:#FFD700; color:#000; border-radius:4px; padding:0 2px;">@${escapeHtml(username)}</span>`;
+			}
+			else{
+				return `<span style="background-color:#E0E0E0; color:#000; border-radius:4px; padding:0 2px;">@${escapeHtml(username)}</span>`;
+			}
+		});
 	}
 	function scrollToBottom(){
 		messagesList.scrollTop=messagesList.scrollHeight;
@@ -65,16 +100,20 @@ document.addEventListener("DOMContentLoaded",()=>{
 		let isAtBottom=messagesList.scrollHeight-messagesList.scrollTop<=messagesList.clientHeight+10;
 		if(isAtBottom){
 			autoScroll=true;
-			if(scrollBtn) scrollBtn.style.display="none";
+			if(scrollBtn){
+				scrollBtn.style.display="none";
+			}
 		}
 		else{
 			autoScroll=false;
-			if(scrollBtn) scrollBtn.style.display="flex";
+			if(scrollBtn){
+				scrollBtn.style.display="flex";
+			}
 		}
 	}
 	async function fetchAndDisplayIP(){
 		try{
-			let response=await fetch("/get-client-ip");
+			let response=await fetch('/get-client-ip');
 			let data=await response.json();
 			if(data.ip&&data.ip!="::1"&&data.ip!="127.0.0.1"){
 				clientRealIP=data.ip;
@@ -97,7 +136,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 				body:JSON.stringify({name})
 			});
 			let data=await response.json();
-			return data.clean==true;
+			return data.clean===true;
 		}
 		catch(e){
 			console.error("Name check failed",e);
@@ -115,23 +154,37 @@ document.addEventListener("DOMContentLoaded",()=>{
 			}
 		}
 		let clean=await isNameClean(randomName);
-		if(clean) return randomName;
-		else return generateRandomUsername();
+		if(clean){
+			return randomName;
+		}
+		else{
+			return generateRandomUsername();
+		}
 	}
 	function parsePrivateMessage(msg){
 		let quotedPattern=/^\/msg\s+"([^"]+)"\s+(.+)$/s;
 		let match=msg.match(quotedPattern);
-		if(match) return {target:match[1], content:match[2]};
+		if(match){
+			return {target:match[1], content:match[2]};
+		}
 		let simplePattern=/^\/msg\s+(\S+)\s+(.+)$/s;
 		match=msg.match(simplePattern);
-		if(match) return {target:match[1], content:match[2]};
+		if(match){
+			return {target:match[1], content:match[2]};
+		}
 		return null;
 	}
 	function updateTypingIndicator(){
-		if(!typingIndicatorDiv) return;
+		if(!typingIndicatorDiv){
+			return;
+		}
 		let arr=Array.from(currentTypers);
-		if(arr.length==0) typingIndicatorDiv.textContent="";
-		else if(arr.length==1) typingIndicatorDiv.textContent=`${escapeHtml(arr[0])} is typing...`;
+		if(arr.length===0){
+			typingIndicatorDiv.textContent="";
+		}
+		else if(arr.length===1){
+			typingIndicatorDiv.textContent=`${escapeHtml(arr[0])} is typing...`;
+		}
 		else{
 			let last=arr.pop();
 			typingIndicatorDiv.textContent=`${arr.map(escapeHtml).join(", ")} and ${escapeHtml(last)} are typing...`;
@@ -154,7 +207,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 		let selectedText=text.substring(start,end);
 		let newText=text.substring(0,start)+before+selectedText+after+text.substring(end);
 		textarea.value=newText;
-		if(selectedText.length==0){
+		if(selectedText.length===0){
 			textarea.selectionStart=start+before.length;
 			textarea.selectionEnd=start+before.length;
 		}
@@ -169,101 +222,64 @@ document.addEventListener("DOMContentLoaded",()=>{
 			let img=new Image();
 			img.onload=()=>{
 				let canvas=document.createElement("canvas");
-				let max=800;
-				let w=img.width, h=img.height;
-				if(w>max){ h=h*max/w; w=max; }
-				if(h>max){ w=w*max/h; h=max; }
-				canvas.width=w; canvas.height=h;
+				let maxWidth=800;
+				let maxHeight=800;
+				let width=img.width;
+				let height=img.height;
+				if(width>maxWidth){
+					height=height*maxWidth/width;
+					width=maxWidth;
+				}
+				if(height>maxHeight){
+					width=width*maxHeight/height;
+					height=maxHeight;
+				}
+				canvas.width=width;
+				canvas.height=height;
 				let ctx=canvas.getContext("2d");
-				ctx.drawImage(img,0,0,w,h);
-				resolve(canvas.toDataURL("image/webp",0.7));
+				ctx.drawImage(img,0,0,width,height);
+				let webpData=canvas.toDataURL("image/webp",0.7);
+				resolve(webpData);
 			};
 			img.onerror=()=>reject("Image load failed");
 			img.src=URL.createObjectURL(file);
 		});
 	}
-	async function startRecording(){
-		try{
-			let stream=await navigator.mediaDevices.getUserMedia({audio:true});
-			mediaRecorder=new MediaRecorder(stream);
-			audioChunks=[];
-			mediaRecorder.ondataavailable=(event)=>{
-				audioChunks.push(event.data);
-			};
-			mediaRecorder.onstop=async()=>{
-				let audioBlob=new Blob(audioChunks, {type:"audio/webm"});
-				let reader=new FileReader();
-				reader.onloadend=()=>{
-					let base64=reader.result;
-					if(socket&&socket.readyState===WebSocket.OPEN){
-						socket.send(JSON.stringify({
-							type:"voice",
-							username:currentUser,
-							voice:base64,
-							ip:clientRealIP,
-							timestamp:getCurrentTime()
-						}));
-					}
-					stream.getTracks().forEach(track=>track.stop());
-					voiceStatus.style.display="none";
-					if(voiceBtn) voiceBtn.classList.remove("recording");
-				};
-				reader.readAsDataURL(audioBlob);
-			};
-			mediaRecorder.start();
-			isRecording=true;
-			if(voiceStatus) voiceStatus.style.display="block";
-			if(voiceBtn) voiceBtn.classList.add("recording");
-			setTimeout(()=>{
-				if(isRecording) stopRecording();
-			},30000);
+	function connectWebSocket(){
+		if(reconnectTimer){
+			clearTimeout(reconnectTimer);
 		}
-		catch(err){
-			console.error(err);
-			showChatError("Microphone access denied.");
-		}
-	}
-	function stopRecording(){
-		if(mediaRecorder&&isRecording){
-			mediaRecorder.stop();
-			isRecording=false;
-		}
-	}
-	async function loggingIn(){
-		let username=usernameInput.value.trim();
-		if(!username){
-			document.getElementById("login-error").textContent="Please enter your username";
-			shakeElement(usernameInput);
-			return;
-		}
-		currentUser=username;
-		if(clientRealIP=="Unknown") await fetchAndDisplayIP();
-		loginPage.style.display="none";
-		chatPage.style.display="block";
-		const serverHost=window.location.hostname;
-		const wsUrl=`ws://${serverHost}:${defaultPort}`;
+		let serverHost=window.location.hostname;
+		let wsUrl=`ws://${serverHost}:${defaultPort}`;
 		socket=new WebSocket(wsUrl);
-		joinFailed=false;
 		socket.onopen=()=>{
+			console.log("WebSocket connected");
+			reconnectAttempts=0;
 			socket.send(JSON.stringify({type:"join",username:currentUser}));
 		};
 		socket.onmessage=(event)=>{
 			let data=JSON.parse(event.data);
-			if(data.type=="onlineCount"){
-				let onlineSpan=document.getElementById("onlineCount");
-				if(onlineSpan) onlineSpan.textContent=`(${data.count} online)`;
+			if(data.type==="onlineCount"){
+				let onlineSpanElement=document.getElementById("onlineCount");
+				if(onlineSpanElement){
+					onlineSpanElement.textContent=`(${data.count} online)`;
+				}
 				return;
 			}
-			if(data.type=="typing"){
-				if(data.typing) currentTypers.add(data.username);
-				else currentTypers.delete(data.username);
+			if(data.type==="typing"){
+				if(data.typing){
+					currentTypers.add(data.username);
+				}
+				else{
+					currentTypers.delete(data.username);
+				}
 				updateTypingIndicator();
 				return;
 			}
-			if(data.type=="system"){
+			if(data.type==="system"){
 				if(data.message&&data.message.includes("Your IP is")){
 					let ip=data.message.split("Your IP is ")[1];
-					if(clientRealIP=="Unknown"){
+					if(clientRealIP==="Unknown"){
 						clientRealIP=ip;
 						userIP.value=`Your local IP is: ${clientRealIP}`;
 					}
@@ -273,6 +289,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 					joinFailed=true;
 					document.getElementById("login-error").textContent=data.message;
 					shakeElement(usernameInput);
+					intentionalClose=true;
 					socket.close();
 					return;
 				}
@@ -282,95 +299,157 @@ document.addEventListener("DOMContentLoaded",()=>{
 				newMessage.style.color="gray";
 				newMessage.style.fontStyle="italic";
 				messagesList.appendChild(newMessage);
-				if(autoScroll) scrollToBottom();
+				if(autoScroll){
+					scrollToBottom();
+				}
 				checkScrollPosition();
 				return;
 			}
-			if(data.type=="private"){
-				let newMessage=document.createElement("li");
+			if(data.type==="private"){
 				let time=data.timestamp||getCurrentTime();
 				let formattedMessage=formatMarkdown(data.message);
 				let displayIP=data.ip||"Unknown";
+				let html;
 				if(data.self){
-					newMessage.innerHTML=`[Private to ${escapeHtml(data.target)}] You [${displayIP}] (${time}): ${formattedMessage}`;
+					html=`[Private to ${escapeHtml(data.target)}] You [${displayIP}] (${time}): ${formattedMessage}`;
 				}
 				else{
-					newMessage.innerHTML=`[Private] ${escapeHtml(data.from)} [${displayIP}] (${time}): ${formattedMessage}`;
+					html=`[Private] ${escapeHtml(data.from)} [${displayIP}] (${time}): ${formattedMessage}`;
 				}
-				newMessage.classList.add("privateMessage");
-				messagesList.appendChild(newMessage);
-				if(autoScroll) scrollToBottom();
+				let li=document.createElement("li");
+				li.innerHTML=html;
+				li.style.whiteSpace="pre-wrap";
+				if(data.self){
+					li.classList.add("userMessage");
+				}
+				else{
+					li.classList.add("otherMessage");
+				}
+				messagesList.appendChild(li);
+				if(autoScroll){
+					scrollToBottom();
+				}
 				checkScrollPosition();
 				return;
 			}
-			if(data.type=="image"){
-				let newMessage=document.createElement("li");
-				let messageTime=getCurrentTime();
+			if(data.type==="image"){
+				let time=getCurrentTime();
 				let displayIP=data.ip||clientRealIP||"Unknown";
-				let imgHtml=`<img src="${escapeHtml(data.image)}" style="max-width:100%; max-height:200px; border-radius:8px; margin-top:4px; cursor:pointer;" onclick="window.open(this.src,"_blank")">`;
-				newMessage.innerHTML=`${escapeHtml(data.username)} [${displayIP}] (${messageTime}):<br> ${imgHtml}`;
-				if(data.username==currentUser) newMessage.classList.add("userMessage");
-				else newMessage.classList.add("otherMessage");
-				messagesList.appendChild(newMessage);
-				if(autoScroll) scrollToBottom();
+				let imgHtml=`<img src="${escapeHtml(data.image)}" style="max-width:100%; max-height:200px; border-radius:8px; margin-top:4px; cursor:pointer;" onclick="window.open(this.src,'_blank')">`;
+				let rawHtml=`${escapeHtml(data.username)} [${displayIP}] (${time}):<br> ${imgHtml}`;
+				let li=document.createElement("li");
+				li.innerHTML=rawHtml;
+				if(data.username===currentUser){
+					li.classList.add("userMessage");
+				}
+				else{
+					li.classList.add("otherMessage");
+				}
+				messagesList.appendChild(li);
+				if(autoScroll){
+					scrollToBottom();
+				}
 				checkScrollPosition();
 				return;
 			}
-			if(data.type=="voice"){
-				let newMessage=document.createElement("li");
-				let messageTime=getCurrentTime();
+			if(data.type==="voice"){
+				let time=getCurrentTime();
 				let displayIP=data.ip||clientRealIP||"Unknown";
 				let audioHtml=`<audio controls src="${escapeHtml(data.voice)}" style="max-width:100%;"></audio>`;
-				newMessage.innerHTML=`${escapeHtml(data.username)} [${displayIP}] (${messageTime}):<br> ${audioHtml}`;
-				if(data.username==currentUser) newMessage.classList.add("userMessage");
-				else newMessage.classList.add("otherMessage");
-				messagesList.appendChild(newMessage);
-				if(autoScroll) scrollToBottom();
+				let rawHtml=`${escapeHtml(data.username)} [${displayIP}] (${time}):<br> ${audioHtml}`;
+				let li=document.createElement("li");
+				li.innerHTML=rawHtml;
+				if(data.username===currentUser){
+					li.classList.add("userMessage");
+				}
+				else{
+					li.classList.add("otherMessage");
+				}
+				messagesList.appendChild(li);
+				if(autoScroll){
+					scrollToBottom();
+				}
 				checkScrollPosition();
 				return;
 			}
-			let newMessage=document.createElement("li");
-			let messageTime=getCurrentTime();
+			let time=getCurrentTime();
 			let formattedMessage=formatMarkdown(data.message||"");
 			let displayIP=data.ip||clientRealIP||"Unknown";
-			newMessage.innerHTML=`${escapeHtml(data.username)} [${displayIP}] (${messageTime}): ${formattedMessage}`;
-			if(data.username==currentUser) newMessage.classList.add("userMessage");
-			else newMessage.classList.add("otherMessage");
-			messagesList.appendChild(newMessage);
-			if(autoScroll) scrollToBottom();
+			let baseHtml=`${escapeHtml(data.username)} [${displayIP}] (${time}): ${formattedMessage}`;
+			let finalHtml=highlightMentions(baseHtml, currentUser);
+			let li=document.createElement("li");
+			li.innerHTML=finalHtml;
+			li.style.whiteSpace="pre-wrap";
+			if(data.username===currentUser){
+				li.classList.add("userMessage");
+			}
+			else{
+				li.classList.add("otherMessage");
+			}
+			messagesList.appendChild(li);
+			if(autoScroll){
+				scrollToBottom();
+			}
 			checkScrollPosition();
 		};
-		socket.onerror=(e)=>console.error(e);
+		socket.onerror=(error)=>{
+			console.error("WebSocket error",error);
+		};
 		socket.onclose=()=>{
-			if(joinFailed){
-				loginPage.style.display="block";
-				chatPage.style.display="none";
-				socket=null;
+			console.log("WebSocket closed");
+			if(!intentionalClose && currentUser && chatPage.style.display==="block"){
+				showChatError("Connection lost. Reconnecting...");
+				reconnectTimer=setTimeout(()=>{
+					reconnectAttempts++;
+					let delay=Math.min(3000, 1000 * Math.pow(1.5, reconnectAttempts));
+					setTimeout(connectWebSocket, delay);
+				},3000);
 			}
 		};
-		messagesList.addEventListener("scroll",checkScrollPosition);
-		scrollBtn.addEventListener("click",()=>{
-			scrollToBottom();
-			autoScroll=true;
-			scrollBtn.style.display="none";
-		});
+	}
+	async function loggingIn(){
+		let username=usernameInput.value.trim();
+		if(!username){
+			document.getElementById("login-error").textContent="Please enter your username";
+			shakeElement(usernameInput);
+			return;
+		}
+		currentUser=username;
+		if(clientRealIP==="Unknown"){
+			await fetchAndDisplayIP();
+		}
+		loginPage.style.display="none";
+		chatPage.style.display="block";
+		intentionalClose=false;
+		connectWebSocket();
 		checkScrollPosition();
 	}
-	usernameInput.addEventListener("keyup",(e)=>e.key=="Enter"&&loggingIn());
+	usernameInput.addEventListener("keyup",(event)=>{
+		if(event.key==="Enter"){
+			loggingIn();
+		}
+	});
 	document.getElementById("joinChat").addEventListener("click",loggingIn);
 	document.getElementById("genUsername").addEventListener("click",async()=>{
-		usernameInput.value=await generateRandomUsername();
+		let newName=await generateRandomUsername();
+		usernameInput.value=newName;
 	});
 	function exportChatLog(){
 		let messages=messagesList.children;
-		if(messages.length==0){
+		if(messages.length===0){
 			showChatError("No messages to export.");
 			return;
 		}
 		let lines=[];
 		for(let li of messages){
 			let text=li.innerText||li.textContent;
-			if(text.trim()) lines.push(text);
+			if(text.trim()){
+				lines.push(text);
+			}
+		}
+		if(lines.length===0){
+			showChatError("No messages to export.");
+			return;
 		}
 		let content=lines.join("\n");
 		let blob=new Blob([content], {type:"text/plain"});
@@ -382,15 +461,28 @@ document.addEventListener("DOMContentLoaded",()=>{
 		link.click();
 		URL.revokeObjectURL(link.href);
 	}
-	document.getElementById("exportChat")?.addEventListener("click",exportChatLog);
-	document.getElementById("clearChat")?.addEventListener("click",()=>{
-		while(messagesList.firstChild) messagesList.removeChild(messagesList.firstChild);
-	});
+	let exportBtn=document.getElementById("exportChat");
+	if(exportBtn){
+		exportBtn.addEventListener("click",exportChatLog);
+	}
+	let clearBtn=document.getElementById("clearChat");
+	if(clearBtn){
+		clearBtn.addEventListener("click",()=>{
+			while(messagesList.firstChild){
+				messagesList.removeChild(messagesList.firstChild);
+			}
+		});
+	}
 	let emojiBtn=document.getElementById("emojiBtn");
 	let emojiPicker=document.getElementById("emojiPicker");
 	if(emojiBtn&&emojiPicker){
 		emojiBtn.addEventListener("click",()=>{
-			emojiPicker.style.display=emojiPicker.style.display=="none"?"grid":"none";
+			if(emojiPicker.style.display==="none"){
+				emojiPicker.style.display="grid";
+			}
+			else{
+				emojiPicker.style.display="none";
+			}
 		});
 		emojiPicker.querySelectorAll("span").forEach(span=>{
 			span.addEventListener("click",()=>{
@@ -400,109 +492,178 @@ document.addEventListener("DOMContentLoaded",()=>{
 			});
 		});
 		document.addEventListener("click",(e)=>{
-			if(!emojiBtn.contains(e.target)&&!emojiPicker.contains(e.target)) emojiPicker.style.display="none";
+			if(!emojiBtn.contains(e.target)&&!emojiPicker.contains(e.target)){
+				emojiPicker.style.display="none";
+			}
 		});
 	}
 	userMessage.addEventListener("keydown",(e)=>{
-		if(e.ctrlKey&&e.key==="b"){ e.preventDefault(); wrapSelection(userMessage,"**","**"); }
-		else if(e.ctrlKey&&e.key==="i"){ e.preventDefault(); wrapSelection(userMessage,"*","*"); }
-		else if(e.ctrlKey&&e.key==="m"){ e.preventDefault(); wrapSelection(userMessage,"`","`"); }
+		if(e.ctrlKey&&e.key==='b'){
+			e.preventDefault();
+			wrapSelection(userMessage,'**','**');
+		}
+		else if(e.ctrlKey&&e.key==='i'){
+			e.preventDefault();
+			wrapSelection(userMessage,'*','*');
+		}
+		else if(e.ctrlKey&&e.key==='m'){
+			e.preventDefault();
+			wrapSelection(userMessage,'`','`');
+		}
 	});
 	function sendMessageContent(message, isImage=false, imageData=null){
-		if(!socket||socket.readyState!=WebSocket.OPEN){
-			showChatError("Connection lost.");
+		if(!socket||socket.readyState!==WebSocket.OPEN){
+			showChatError("Connection lost. Please refresh.");
 			return false;
 		}
 		if(isImage){
-			socket.send(JSON.stringify({type:"image",username:currentUser,image:imageData,ip:clientRealIP,timestamp:getCurrentTime()}));
+			socket.send(JSON.stringify({
+				type:"image",
+				username:currentUser,
+				image:imageData,
+				ip:clientRealIP,
+				timestamp:getCurrentTime()
+			}));
 		}
 		else{
 			let privateInfo=parsePrivateMessage(message);
 			if(privateInfo){
-				socket.send(JSON.stringify({type:"private",username:currentUser,target:privateInfo.target,message:privateInfo.content,ip:clientRealIP,timestamp:getCurrentTime()}));
+				socket.send(JSON.stringify({
+					type:"private",
+					username:currentUser,
+					target:privateInfo.target,
+					message:privateInfo.content,
+					ip:clientRealIP,
+					timestamp:getCurrentTime()
+				}));
 			}
 			else{
-				socket.send(JSON.stringify({username:currentUser,message:message,ip:clientRealIP}));
+				socket.send(JSON.stringify({username:currentUser, message:message, ip:clientRealIP}));
 			}
 		}
 		return true;
 	}
 	function sendMessage(){
 		let message=userMessage.value.trim();
-		if(!message) return;
-		if(message=="/users"){
-			if(socket&&socket.readyState==WebSocket.OPEN) socket.send(JSON.stringify({type:"getUsers"}));
+		if(!message){
+			return;
+		}
+		if(message==="/users"){
+			if(socket&&socket.readyState===WebSocket.OPEN){
+				socket.send(JSON.stringify({type:"getUsers"}));
+			}
 			userMessage.value="";
 			return;
 		}
-		if(message=="/help"){
-			let helpText="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/help - this help\n\nKeyboard:\nCtrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, converts to WebP)\nVoice: click 🎤 (30s max)";
+		if(message==="/help"){
+			let helpText="Available commands:\n/users - list online users\n/msg \"username\" message - send private message\n/help - show this help\n\nKeyboard shortcuts:\nCtrl+B - bold\nCtrl+I - italic\nCtrl+M - inline code\n\nDrag & drop image (≤1MB, converted to WebP)\n\nMentions: @username or @\"username with spaces\" (e.g., @\"John Doe\")";
 			let fakeEvent={data:JSON.stringify({type:"system",message:helpText})};
 			socket.onmessage(fakeEvent);
 			userMessage.value="";
 			return;
 		}
-		if(sendMessageContent(message)) userMessage.value="";
+		if(sendMessageContent(message)){
+			userMessage.value="";
+		}
 	}
-	userMessage.addEventListener("keypress",(e)=>{
-		if(e.key=="Enter"&&e.shiftKey){ e.preventDefault(); sendMessage(); }
+	userMessage.addEventListener("keypress",(event)=>{
+		if(event.key==="Enter"&&event.shiftKey){
+			event.preventDefault();
+			sendMessage();
+		}
 	});
 	userMessage.addEventListener("input",()=>{
-		if(typingTimeout) clearTimeout(typingTimeout);
+		if(typingTimeout){
+			clearTimeout(typingTimeout);
+		}
 		sendTypingStart();
-		typingTimeout=setTimeout(sendTypingStop,1000);
+		typingTimeout=setTimeout(()=>{
+			sendTypingStop();
+		},1000);
 	});
 	userMessage.addEventListener("blur",()=>{
-		if(typingTimeout) clearTimeout(typingTimeout);
+		if(typingTimeout){
+			clearTimeout(typingTimeout);
+		}
 		sendTypingStop();
 	});
 	document.getElementById("sendMessage").onclick=sendMessage;
-	if(voiceBtn){
-		voiceBtn.addEventListener("click",()=>{
-			if(!isRecording) startRecording();
-			else stopRecording();
-		});
-	}
-	userMessage.addEventListener("dragover",e=>e.preventDefault());
+	userMessage.addEventListener("dragover",(e)=>{
+		e.preventDefault();
+	});
 	userMessage.addEventListener("drop",async(e)=>{
 		e.preventDefault();
 		let file=e.dataTransfer.files[0];
-		if(!file) return;
+		if(!file){
+			return;
+		}
 		if(!file.type.startsWith("image/")){
-			showChatError("Only images allowed.");
+			showChatError("Only image files are allowed.");
 			return;
 		}
 		if(file.size>1024*1024){
-			showChatError("Max 1MB.");
+			showChatError("File too large (max 1 MB).");
 			return;
 		}
 		try{
-			let webp=await convertToWebP(file);
-			sendMessageContent(null, true, webp);
+			let webpData=await convertToWebP(file);
+			sendMessageContent(null, true, webpData);
 		}
-		catch(err){ showChatError("Image conversion failed."); }
+		catch(err){
+			showChatError("Image conversion failed: "+err);
+		}
 	});
 	window.addEventListener("beforeunload",(e)=>{
-		if(chatPage.style.display=="block"){
+		if(chatPage.style.display==="block"){
+			intentionalClose=true;
 			e.preventDefault();
-			e.returnValue="You will be disconnected.";
+			e.returnValue="You are currently in the chat. Leaving will disconnect you.";
+			return "You are currently in the chat. Leaving will disconnect you.";
 		}
 	});
 	function applyTheme(theme){
-		document.body.setAttribute("data-theme",theme=="dark"?"dark":"light");
+		if(theme==="dark"){
+			document.body.setAttribute("data-theme","dark");
+		}
+		else{
+			document.body.setAttribute("data-theme","light");
+		}
 	}
 	function getSystemTheme(){
-		return window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";
+		if(window.matchMedia("(prefers-color-scheme: dark)").matches){
+			return "dark";
+		}
+		else{
+			return "light";
+		}
 	}
 	let savedTheme=localStorage.getItem("chatTheme");
-	if(!savedTheme) savedTheme=getSystemTheme();
+	if(!savedTheme){
+		savedTheme=getSystemTheme();
+	}
 	applyTheme(savedTheme);
-	document.getElementById("themeToggle").addEventListener("click",()=>{
-		let newTheme=document.body.getAttribute("data-theme")=="dark"?"light":"dark";
-		applyTheme(newTheme);
-		localStorage.setItem("chatTheme",newTheme);
-	});
+	let themeToggle=document.getElementById("themeToggle");
+	if(themeToggle){
+		themeToggle.addEventListener("click",()=>{
+			let currentTheme=document.body.getAttribute("data-theme");
+			let newTheme=currentTheme==="dark"?"light":"dark";
+			applyTheme(newTheme);
+			localStorage.setItem("chatTheme",newTheme);
+		});
+	}
 	window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",(e)=>{
-		if(!localStorage.getItem("chatTheme")) applyTheme(e.matches?"dark":"light");
+		if(!localStorage.getItem("chatTheme")){
+			applyTheme(e.matches?"dark":"light");
+		}
 	});
+	messagesList.addEventListener("scroll",checkScrollPosition);
+	if(scrollBtn){
+		scrollBtn.addEventListener("click",()=>{
+			scrollToBottom();
+			autoScroll=true;
+			if(scrollBtn){
+				scrollBtn.style.display="none";
+			}
+		});
+	}
 });

@@ -78,7 +78,7 @@ body{
 input,textarea{
 	width:100%;
 	padding:.5rem .5rem;
-	margin-bottom:1rem;
+	margin-bottom:.5rem;
 	border-radius:.3rem;
 	border:1px solid var(--border-input);
 	background-color:var(--background-card);
@@ -118,7 +118,7 @@ textarea{
 	text-align:left;
 	overflow-y:auto;
 	-webkit-overflow-scrolling:touch;
-	max-height:15rem;
+	max-height:10rem;
 	margin-bottom:0.5rem;
 	padding:0.5rem;
 	background:var(--background-card);
@@ -149,7 +149,7 @@ li:last-child{
 	flex-direction:row;
 	align-items:center;
 	gap:0.5rem;
-	margin-bottom:1rem;
+	margin-bottom:.5rem;
 }
 #username-wrapper input{
 	margin-bottom:0;
@@ -173,7 +173,7 @@ li:last-child{
 	display:flex;
 	justify-content:space-between;
 	align-items:center;
-	margin-bottom:1rem;
+	margin-bottom:.5rem;
 	flex-wrap:wrap;
 	gap:0.5rem;
 }
@@ -350,7 +350,7 @@ body[data-theme="dark"] #sunIcon{
 	font-size:0.8rem;
 	color:var(--typing-color);
 	font-style:italic;
-	margin-bottom:0.5rem;
+	margin-bottom:.5rem;
 	text-align:left;
 }
 @media (max-width:1024px) and (min-width:768px){
@@ -359,7 +359,7 @@ body[data-theme="dark"] #sunIcon{
 		max-width:90%;
 	}
 	#messages{
-		max-height:20rem;
+		max-height:15rem;
 		font-size:1rem;
 	}
 	#chatHeader h2{
@@ -390,7 +390,7 @@ body[data-theme="dark"] #sunIcon{
 		justify-content:center;
 	}
 	#messages{
-		max-height:12rem;
+		max-height:10rem;
 		font-size:0.9rem;
 	}
 	#chatHeader h2{
@@ -456,7 +456,7 @@ body[data-theme="dark"] #sunIcon{
 		padding:2rem;
 	}
 	#messages{
-		max-height:20rem;
+		max-height:15rem;
 	}
 	input,textarea{
 		font-size:1.1rem;
@@ -487,7 +487,7 @@ body[data-theme="dark"] #sunIcon{
 		padding:2rem;
 	}
 	#messages{
-		max-height:22rem;
+		max-height:15rem;
 	}
 }
 #voiceBtn:hover{

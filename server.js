@@ -45,6 +45,35 @@ app.post("/check-name",(req,res)=>{
 const wsServer=new WebSocketServer({port:portWS,host:"::"});
 let clients=[];
 let usernameToWs=new Map();
+const rateLimitMap=new Map();
+const RATE_LIMIT=3;
+const RATE_WINDOW=1000;
+const BAN_DURATION=5000;
+
+function checkRateAndBan(username){
+	const now=Date.now();
+	if(!rateLimitMap.has(username)){
+		rateLimitMap.set(username,{count:1, lastReset:now, bannedUntil:0});
+		return true;
+	}
+	let entry=rateLimitMap.get(username);
+	if(entry.bannedUntil>now){
+		return false;
+	}
+	if(now-entry.lastReset>RATE_WINDOW){
+		entry.lastReset=now;
+		entry.count=1;
+		entry.bannedUntil=0;
+		return true;
+	}
+	if(entry.count>=RATE_LIMIT){
+		entry.bannedUntil=now+BAN_DURATION;
+		entry.count=0;
+		return false;
+	}
+	entry.count++;
+	return true;
+}
 function broadcastOnlineCount(){
 	const count=clients.length;
 	clients.forEach(client=>{
@@ -70,7 +99,7 @@ function broadcastSystemMessage(message,excludeWs=null){
 wsServer.on("connection",(ws,req)=>{
 	clients.push(ws);
 	broadcastOnlineCount();
-	console.log("New connection established"+". Number of client(s): "+clients.length);
+	console.log("New connection established"+". Number of client(s) "+clients.length);
 	let clientIP=req.headers["x-forwarded-for"]||req.socket.remoteAddress;
 	if(clientIP&&clientIP.includes("::ffff:")){
 		clientIP=clientIP.split("::ffff:")[1];
@@ -112,7 +141,7 @@ wsServer.on("connection",(ws,req)=>{
 			return;
 		}
 		else if(data.type=="image"){
-			const imagePayload={
+			const payload={
 				type:"image",
 				username:data.username,
 				image:data.image,
@@ -121,12 +150,31 @@ wsServer.on("connection",(ws,req)=>{
 			};
 			clients.forEach(client=>{
 				if(client.readyState===WebSocket.OPEN){
-					client.send(JSON.stringify(imagePayload));
+					client.send(JSON.stringify(payload));
+				}
+			});
+			return;
+		}
+		else if(data.type=="voice"){
+			const payload={
+				type:"voice",
+				username:data.username,
+				voice:data.voice,
+				ip:ws.clientIP||"Unknown IP",
+				timestamp:data.timestamp
+			};
+			clients.forEach(client=>{
+				if(client.readyState===WebSocket.OPEN){
+					client.send(JSON.stringify(payload));
 				}
 			});
 			return;
 		}
 		else if(data.type=="private"){
+			if(!checkRateAndBan(data.username)){
+				ws.send(JSON.stringify({type:"system",message:"You are temporarily banned for sending too many messages. Please wait 5 seconds."}));
+				return;
+			}
 			const targetWs=usernameToWs.get(data.target);
 			if(!targetWs||targetWs.readyState!==WebSocket.OPEN){
 				if(ws.readyState===WebSocket.OPEN){
@@ -154,28 +202,18 @@ wsServer.on("connection",(ws,req)=>{
 			}
 			return;
 		}
-		else if(data.type=="voice"){
-			const voicePayload={
-				type:"voice",
-				username:data.username,
-				voice:data.voice,
-				ip:ws.clientIP||"Unknown IP",
-				timestamp:data.timestamp
-			};
-			clients.forEach(client=>{
-				if(client.readyState===WebSocket.OPEN){
-					client.send(JSON.stringify(voicePayload));
-				}
-			});
+		if(!checkRateAndBan(data.username)){
+			ws.send(JSON.stringify({type:"system",message:"You are temporarily banned for sending too many messages. Please wait 5 seconds."}));
 			return;
 		}
-		clients.forEach((client)=>{
+		const broadcastMsg={
+			username:data.username,
+			message:data.message,
+			ip:ws.clientIP||"Unknown IP"
+		};
+		clients.forEach(client=>{
 			if(client.readyState==WebSocket.OPEN){
-				client.send(JSON.stringify({
-					username:data.username,
-					message:data.message,
-					ip:ws.clientIP||"Unknown IP"
-				}));
+				client.send(JSON.stringify(broadcastMsg));
 			}
 		});
 	});
