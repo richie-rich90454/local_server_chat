@@ -471,7 +471,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			if(data.type==="image"){
 				let time=getCurrentTime();
 				let ip=data.ip||clientRealIP||"Unknown";
-				let imgHtml=`<img src="${escapeHtml(data.image)}" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:4px;cursor:pointer;" onclick="window.open(this.src,"_blank")">`;
+				let imgHtml=`<img src="${escapeHtml(data.image)}" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:4px;cursor:pointer;" onclick="window.open(this.src,'_blank')">`;
 				let rawHtml=`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${imgHtml}`;
 				let li=document.createElement("li");
 				li.innerHTML=rawHtml;
@@ -994,9 +994,144 @@ document.addEventListener("DOMContentLoaded",()=>{
 			container.innerHTML="<p style=\"color:red\">Chess game failed to load. Please install chess.js@0.10.3</p>";
 		}
 	}
+	let unlockCount=localStorage.getItem("unlockCount")?parseInt(localStorage.getItem("unlockCount")):0;
+	let developerMode=false;
+	let goldBorderTimeout=null;
+	function showSystemMessage(msg){
+		let fakeEvent={data:JSON.stringify({type:"system",message:msg})};
+		socket.onmessage(fakeEvent);
+	}
+	function applyGoldBorder(){
+		if(goldBorderTimeout) clearTimeout(goldBorderTimeout);
+		chatPage.style.borderColor="#FFD700";
+		chatPage.style.boxShadow="0 0 20px #FFD700";
+		goldBorderTimeout=setTimeout(()=>{
+			chatPage.style.borderColor="";
+			chatPage.style.boxShadow="";
+		},30000);
+	}
+	function updateDeveloperMode(){
+		if(unlockCount>=5 && !developerMode){
+			developerMode=true;
+			let devBadge=document.createElement("div");
+			devBadge.id="devBadge";
+			devBadge.textContent="DEV MODE ACTIVE";
+			devBadge.style.cssText="position:fixed;bottom:10px;left:10px;background:#000;color:#0f0;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:10px;z-index:9999;opacity:0.7;";
+			document.body.appendChild(devBadge);
+			let originalOnlineHandler=socket.onmessage;
+			socket.onmessage=(event)=>{
+				let data=JSON.parse(event.data);
+				if(data.type==="onlineCount"){
+					console.log("[DEV] Online count:",data.count);
+				}
+				originalOnlineHandler(event);
+			};
+			showSystemMessage("Developer mode unlocked. Hidden powers activated.");
+		}
+	}
+	function doRandomEasterEgg(){
+		let eggs=[
+			()=>{
+				unlockCount++;
+				localStorage.setItem("unlockCount",unlockCount);
+				showSystemMessage(`Secret unlock #${unlockCount}. You feel a strange power.`);
+				applyGoldBorder();
+				updateDeveloperMode();
+			},
+			()=>{
+				showSystemMessage("That's the maximum value of a signed 16-bit integer. You found a boundary.");
+			},
+			()=>{
+				showSystemMessage("65536 = 2^16. A perfect square.");
+			},
+			()=>{
+				showSystemMessage("The maximum 32-bit signed integer. You've reached the limit.");
+			},
+			()=>{
+				showSystemMessage("You have gained root access... to the chat. Nothing changes, but feel powerful.");
+			},
+			()=>{
+				let oldName=currentUser;
+				currentUser="root";
+				showSystemMessage("You are now root. (Press any key to revert)");
+				document.addEventListener("keydown",function revert(e){
+					currentUser=oldName;
+					showSystemMessage("Root privileges revoked.");
+					document.removeEventListener("keydown",revert);
+				},{once:true});
+			},
+			()=>{
+				let originalBg=document.body.style.backgroundColor;
+				document.body.style.backgroundColor="#FF0000";
+				setTimeout(()=>{
+					document.body.style.backgroundColor="#00FF00";
+					setTimeout(()=>{
+						document.body.style.backgroundColor="#0000FF";
+						setTimeout(()=>{
+							document.body.style.backgroundColor=originalBg;
+						},200);
+					},200);
+				},200);
+				showSystemMessage("RGB flash!");
+			},
+			()=>{
+				let span=document.getElementById("onlineCount");
+				let original=span.textContent;
+				span.textContent="(???)";
+				showSystemMessage("Online count classified.");
+				setTimeout(()=>{
+					span.textContent=original;
+				},5000);
+			},
+			()=>{
+				showSystemMessage("Critical error: reality glitch detected. Press any key to stabilise.");
+				let handler=()=>{
+					showSystemMessage("Reality stabilised.");
+					document.removeEventListener("keydown",handler);
+				};
+				document.addEventListener("keydown",handler,{once:true});
+			}
+		];
+		let randomIndex=Math.floor(Math.random()*eggs.length);
+		eggs[randomIndex]();
+	}
 	function sendMessage(){
 		let msg=userMessage.value.trim();
 		if(!msg){return;}
+		if(msg==="/unlock"){
+			unlockCount++;
+			localStorage.setItem("unlockCount",unlockCount);
+			showSystemMessage(`Secret unlock #${unlockCount}. You feel a strange power.`);
+			applyGoldBorder();
+			updateDeveloperMode();
+			userMessage.value="";
+			return;
+		}
+		if(msg==="/32767"){
+			showSystemMessage("That's the maximum value of a signed 16-bit integer. You found a boundary.");
+			userMessage.value="";
+			return;
+		}
+		if(msg==="/65536"){
+			showSystemMessage("65536 = 2^16. A perfect square.");
+			userMessage.value="";
+			return;
+		}
+		if(msg==="/2147483647"){
+			showSystemMessage("The maximum 32-bit signed integer. You've reached the limit.");
+			userMessage.value="";
+			return;
+		}
+		if(msg==="/root"){
+			showSystemMessage("You have gained root access... to the chat. Nothing changes, but feel powerful.");
+			userMessage.value="";
+			return;
+		}
+		if(msg==="/egg"){
+			doRandomEasterEgg();
+			userMessage.value="";
+			return;
+		}
 		if(msg==="/chess"){
 			if(document.getElementById("chessOverlay")){
 				showChatError("Chess game is already open");
@@ -1067,7 +1202,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			return;
 		}
 		if(msg==="/help"){
-			let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/2048 - play 2048 game\n/chess - play Chess vs Computer\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
+			let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/2048 - play 2048 game\n/chess - play Chess vs Computer\n/help - this help\n\nEaster egg: /egg does something random ;)\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
 			let fake={data:JSON.stringify({type:"system",message:help})};
 			socket.onmessage(fake);
 			userMessage.value="";
