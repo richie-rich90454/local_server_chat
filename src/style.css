@@ -127,6 +127,8 @@ li{
 	word-wrap:break-word;
 	padding:.3rem 0;
 	border-bottom:1px solid var(--message-border);
+	max-width:100%;
+	overflow-x:auto;
 }
 li:last-child{
 	border-bottom:none;
@@ -143,6 +145,42 @@ li:last-child{
 	color:var(--message-private);
 	text-align:left;
 	font-style:italic;
+}
+.userMessage br{
+	display:block;
+	content:"";
+	margin:0;
+}
+.userMessage pre{
+	display:block;
+	text-align:left;
+	max-width:90%;
+	margin:0.5rem 0;
+	margin-left:auto;
+	margin-right:0;
+	border:1px solid var(--message-user);
+	border-radius:.3rem;
+}
+.otherMessage pre{
+	display:block;
+	text-align:left;
+	max-width:90%;
+	margin:0.5rem 0;
+	border:1px solid var(--border-input);
+	border-radius:.3rem;
+}
+pre code.hljs{
+	display:block;
+	overflow-x:auto;
+	padding:.8em;
+	background:var(--background-card);
+	font-family:monospace;
+	font-size:.85rem;
+	white-space:pre;
+	border-radius:.3rem;
+}
+code{
+	font-family:monospace;
 }
 #username-wrapper{
 	display:flex;
@@ -417,21 +455,6 @@ body[data-theme="dark"] #sunIcon{
 .reply-btn:hover{
 	opacity:1;
 }
-pre code.hljs{
-	display:block;
-	overflow-x:auto;
-	padding:.8em;
-	background:var(--background-card);
-	border-radius:.3rem;
-	font-family:monospace;
-	font-size:.85rem;
-	white-space:pre;
-	margin:.5rem 0;
-	border:1px solid var(--border-input);
-}
-pre code.hljs *{
-	white-space:pre;
-}
 .modal-overlay{
 	position:fixed;
 	top:0;
@@ -463,7 +486,6 @@ pre code.hljs *{
 	border-radius:.3rem;
 	background:var(--background-card);
 	color:var(--text-primary);
-	color: var(--text-primary);
 }
 .modal-box button{
 	margin:0.3rem;
