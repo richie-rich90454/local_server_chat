@@ -65,6 +65,48 @@ import hljsDefineZig from "highlightjs-zig";
 import hljsDefineCobol from "highlightjs-cobol";
 hljsDefineZig(hljs);
 hljs.registerLanguage("cobol", hljsDefineCobol);
+function createModal(promptMessage, defaultValue, callback){
+	let overlay=document.createElement("div");
+	overlay.className="modal-overlay";
+	let box=document.createElement("div");
+	box.className="modal-box";
+	let label=document.createElement("div");
+	label.textContent=promptMessage;
+	label.style.marginBottom="0.5rem";
+	let input=document.createElement("input");
+	input.type="text";
+	input.value=defaultValue||"";
+	let buttonDiv=document.createElement("div");
+	let okBtn=document.createElement("button");
+	okBtn.textContent="OK";
+	let cancelBtn=document.createElement("button");
+	cancelBtn.textContent="Cancel";
+	buttonDiv.appendChild(okBtn);
+	buttonDiv.appendChild(cancelBtn);
+	box.appendChild(label);
+	box.appendChild(input);
+	box.appendChild(buttonDiv);
+	overlay.appendChild(box);
+	document.body.appendChild(overlay);
+	function close(){
+		overlay.remove();
+	}
+	okBtn.onclick=()=>{
+		let val=input.value.trim();
+		close();
+		callback(val);
+	};
+	cancelBtn.onclick=()=>{
+		close();
+		callback(null);
+	};
+	input.addEventListener("keypress",(e)=>{
+		if(e.key==="Enter"){
+			okBtn.click();
+		}
+	});
+	input.focus();
+}
 document.addEventListener("DOMContentLoaded",()=>{
 	let headerControls=document.getElementById("headerControls");
 	if(headerControls&&!document.getElementById("exportFormat")){
@@ -308,17 +350,18 @@ document.addEventListener("DOMContentLoaded",()=>{
 		userMessage.focus();
 	}
 	function insertForwardToPrivate(sender,rawMessage){
-		let target=prompt("Enter target username to forward to:");
-		if(target && target.trim()){
-			let forwardText=`/msg "${target.trim()}" > @${sender}: ${rawMessage}`;
-			let cursor=userMessage.selectionStart;
-			let val=userMessage.value;
-			let newVal=val.substring(0,cursor)+forwardText+val.substring(cursor);
-			userMessage.value=newVal;
-			userMessage.selectionStart=cursor+forwardText.length;
-			userMessage.selectionEnd=cursor+forwardText.length;
-			userMessage.focus();
-		}
+		createModal("Enter target username to forward to:", "", (target)=>{
+			if(target&&target.trim()){
+				let forwardText=`/msg "${target.trim()}" > @${sender}: ${rawMessage}`;
+				let cursor=userMessage.selectionStart;
+				let val=userMessage.value;
+				let newVal=val.substring(0,cursor)+forwardText+val.substring(cursor);
+				userMessage.value=newVal;
+				userMessage.selectionStart=cursor+forwardText.length;
+				userMessage.selectionEnd=cursor+forwardText.length;
+				userMessage.focus();
+			}
+		});
 	}
 	function connectWebSocket(){
 		if(reconnectTimer){clearTimeout(reconnectTimer);}
@@ -449,7 +492,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 		socket.onerror=(e)=>{console.error(e);};
 		socket.onclose=()=>{
 			console.log("WebSocket closed");
-			if(!intentionalClose && currentUser && chatPage.style.display==="block"){
+			if(!intentionalClose&&currentUser&&chatPage.style.display==="block"){
 				showChatError("Connection lost. Reconnecting...");
 				reconnectTimer=setTimeout(()=>{
 					reconnectAttempts++;
@@ -562,16 +605,17 @@ document.addEventListener("DOMContentLoaded",()=>{
 	let codeBlockBtn=document.getElementById("codeBlockBtn");
 	if(codeBlockBtn){
 		codeBlockBtn.addEventListener("click",()=>{
-			let lang=prompt("Enter language (e.g., javascript, python, cpp, fortran, cobol):","");
-			let codeBlock=`\`\`\`${lang||""}\n\n\`\`\``;
-			let cursorPos=userMessage.selectionStart;
-			let val=userMessage.value;
-			let newVal=val.slice(0,cursorPos)+codeBlock+val.slice(cursorPos);
-			userMessage.value=newVal;
-			let newCursorPos=cursorPos+(lang?lang.length+4:3);
-			userMessage.selectionStart=newCursorPos;
-			userMessage.selectionEnd=newCursorPos;
-			userMessage.focus();
+			createModal("Enter language (e.g., javascript, python, cpp, fortran, cobol):", "", (lang)=>{
+				let codeBlock=`\`\`\`${lang||""}\n\n\`\`\``;
+				let cursorPos=userMessage.selectionStart;
+				let val=userMessage.value;
+				let newVal=val.slice(0,cursorPos)+codeBlock+val.slice(cursorPos);
+				userMessage.value=newVal;
+				let newCursorPos=cursorPos+(lang?lang.length+4:3);
+				userMessage.selectionStart=newCursorPos;
+				userMessage.selectionEnd=newCursorPos;
+				userMessage.focus();
+			});
 		});
 	}
 	userMessage.addEventListener("keydown",(e)=>{
@@ -681,7 +725,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 		let forwardOptElem=document.getElementById("forwardOption");
 		if(replyOptElem){
 			replyOptElem.addEventListener("click",()=>{
-				if(window.currentReplySender && window.currentReplyRawText){
+				if(window.currentReplySender&&window.currentReplyRawText){
 					insertReplyQuote(window.currentReplySender,window.currentReplyRawText);
 				}
 				contextMenuElem.style.display="none";
@@ -689,7 +733,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 		}
 		if(forwardOptElem){
 			forwardOptElem.addEventListener("click",()=>{
-				if(window.currentReplySender && window.currentReplyRawText){
+				if(window.currentReplySender&&window.currentReplyRawText){
 					insertForwardToPrivate(window.currentReplySender,window.currentReplyRawText);
 				}
 				contextMenuElem.style.display="none";
