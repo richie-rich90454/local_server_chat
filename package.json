@@ -6,6 +6,8 @@
         "bad-words": "^4.0.0",
         "express": "^5.2.1",
         "highlight.js": "^11.11.1",
+        "highlightjs-cobol": "^0.3.3",
+        "highlightjs-zig": "^1.0.2",
         "ws": "^8.20.0"
     },
     "main": "server.js",
