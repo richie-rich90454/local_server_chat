@@ -389,7 +389,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 			let replySpan=document.createElement("span");
 			replySpan.textContent=" 💬";
 			replySpan.className="reply-btn";
-			replySpan.title="回复此消息";
+			replySpan.title="Reply to this message";
 			let rawMessageText=data.message;
 			let senderUsername=data.username;
 			replySpan.onclick=()=>{

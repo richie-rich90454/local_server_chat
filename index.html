@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
@@ -11,6 +11,7 @@
 		<link rel="icon" href="/android-chrome-192x192.png">
 		<link rel="icon" href="/android-chrome-512x512.png">
 		<link rel="manifest" href="/site.webmanifest">
+		<link rel="stylesheet" href="src/font-preload.css">
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 		<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
@@ -18,48 +19,48 @@
 	</head>
 	<body>
 		<div id="login">
-			<h2>Locally Hosted Chat Application Login</h2>
+			<h2 id="loginHeading">Locally Hosted Chat Application Login</h2>
 			<div id="username-wrapper">
-				<input type="text" id="username" placeholder="Chat Username" autocomplete="off">
-				<input type="button" id="genUsername" value="Generate a Five Character Username">
+				<input type="text" id="username" placeholder="Chat Username" autocomplete="off" aria-label="Username">
+				<input type="button" id="genUsername" value="Generate a Five Character Username" aria-label="Generate random username">
 			</div>
-			<input type="text" id="userIp" placeholder="IP not Detected" disabled autocomplete="off">
-			<input type="button" id="joinChat" value="Join the chat">
-			<div id="login-error"></div>
+			<input type="text" id="userIp" placeholder="IP not Detected" disabled autocomplete="off" aria-label="Local IP Address">
+			<input type="button" id="joinChat" value="Join the chat" aria-label="Join chat">
+			<div id="login-error" role="alert" aria-live="polite"></div>
 		</div>
 		<div id="chatUI" style="display: none;">
 			<div id="chatHeader">
-				<h2>Locally Hosted Chat Application Interface <span id="onlineCount">(0 online)</span></h2>
+				<h2 id="chatHeading">Locally Hosted Chat Application Interface <span id="onlineCount">(0 online)</span></h2>
 				<div id="headerControls">
-					<button id="themeToggle">
-						<svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-						<svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+					<button id="themeToggle" aria-label="Toggle dark/light theme">
+						<svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+						<svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
 					</button>
-					<input type="button" id="exportChat" value="Export Chat">
-					<input type="button" id="clearChat" value="Clear Chat">
+					<input type="button" id="exportChat" value="Export Chat" aria-label="Export chat log">
+					<input type="button" id="clearChat" value="Clear Chat" aria-label="Clear messages from screen">
 				</div>
 			</div>
-			<div id="typingIndicator"></div>
-			<ul id="messages"></ul>
+			<div id="typingIndicator" role="status" aria-live="polite"></div>
+			<ul id="messages" role="log" aria-live="polite"></ul>
 			<div id="inputArea">
-				<textarea id="userMessage" placeholder="Enter something here 😀 (e.g. How is everybody's day?)&NewLine;Send the message with shift+enter or the &quot;Send Message&quot; button below" rows="5" cols="80"></textarea>
-				<div id="voiceStatus" style="display:none;">Recording...</div>
+				<textarea id="userMessage" placeholder="Enter something here 😀 (e.g. How is everybody&quot;s day?)&NewLine;Send the message with shift+enter or the &quot;Send Message&quot; button below" rows="5" cols="80" aria-label="Message input"></textarea>
+				<div id="voiceStatus" style="display:none;" role="status" aria-live="assertive">Recording...</div>
 				<div id="inputActions">
 					<div id="emojiPickerContainer">
-						<button id="emojiBtn" title="Insert emoji">😀</button>
-						<div id="emojiPicker" style="display:none;">
+						<button id="emojiBtn" title="Insert emoji" aria-label="Open emoji picker">😀</button>
+						<div id="emojiPicker" style="display:none;" role="menu" aria-label="Emoji picker">
 							<span>😀</span> <span>😂</span> <span>😍</span> <span>😢</span> <span>😡</span>
 							<span>👍</span> <span>❤️</span> <span>🎉</span> <span>🔥</span> <span>✨</span>
 						</div>
 					</div>
-					<button id="voiceBtn" title="Record voice message">🎤</button>
-					<input type="button" id="sendMessage" value="Send Message">
+					<button id="voiceBtn" title="Record voice message" aria-label="Record voice message (requires HTTPS)">🎤</button>
+					<input type="button" id="sendMessage" value="Send Message" aria-label="Send message">
 				</div>
 			</div>
-			<button id="scrollToBottomBtn">
-				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+			<button id="scrollToBottomBtn" aria-label="Scroll to bottom">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
 			</button>
-			<div id="chatError" class="chat-error"></div>
+			<div id="chatError" class="chat-error" role="alert" aria-live="assertive"></div>
 		</div>
 		<script type="module" src="src/script.js"></script>
 	</body>
