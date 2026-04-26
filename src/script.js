@@ -451,7 +451,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 				li.innerHTML=`<em>${escapeHtml(data.message)}</em>`;
 				li.style.cssText="white-space:pre-wrap;color:gray;font-style:italic;";
 				messagesList.appendChild(li);
-				if(autoScroll){scrollToBottom();}
+				scrollToBottom();
 				checkScrollPosition();
 				return;
 			}
@@ -466,7 +466,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 				if(data.self){li.classList.add("userMessage");}
 				else{li.classList.add("otherMessage");}
 				messagesList.appendChild(li);
-				if(autoScroll){scrollToBottom();}
+				scrollToBottom();
 				checkScrollPosition();
 				return;
 			}
@@ -480,7 +480,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 				if(data.username===currentUser){li.classList.add("userMessage");}
 				else{li.classList.add("otherMessage");}
 				messagesList.appendChild(li);
-				if(autoScroll){scrollToBottom();}
+				scrollToBottom();
 				checkScrollPosition();
 				return;
 			}
@@ -494,7 +494,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 				if(data.username===currentUser){li.classList.add("userMessage");}
 				else{li.classList.add("otherMessage");}
 				messagesList.appendChild(li);
-				if(autoScroll){scrollToBottom();}
+				scrollToBottom();
 				checkScrollPosition();
 				return;
 			}
@@ -530,7 +530,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 				window.currentReplyRawText=data.message;
 			});
 			messagesList.appendChild(li);
-			if(autoScroll){scrollToBottom();}
+			scrollToBottom();
 			checkScrollPosition();
 		};
 		socket.onerror=(e)=>{console.error(e);};
