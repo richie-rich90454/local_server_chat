@@ -3,9 +3,10 @@
     "version": "2.0.0",
     "type": "module",
     "dependencies": {
-        "2048-webcomponent": "^1.1.0",
         "bad-words": "^4.0.0",
+        "chess.js": "^0.10.3",
         "express": "^5.2.1",
+        "gchessboard": "^1.4.0",
         "highlight.js": "^11.11.1",
         "highlightjs-cobol": "^0.3.3",
         "highlightjs-zig": "^1.0.2",
