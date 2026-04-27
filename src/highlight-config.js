@@ -139,10 +139,6 @@ export function highlightMentions(html,currentUsername){
             let span=document.createElement("span");
             span.innerHTML=newText;
             node.parentNode.replaceChild(span,node);
-            while(span.firstChild){
-                span.parentNode.insertBefore(span.firstChild,span);
-            }
-            span.remove();
         }
     }
     skipElements.forEach(el=>el.removeAttribute("data-skip-mention"));

@@ -48,6 +48,98 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(onlineSpan&&onlineSpan.parentNode){
         onlineSpan.parentNode.appendChild(timeSpan);
     }
+    let onlineUsersList=[];
+    function updateOnlineUsersList(usersStr){
+        let parts=usersStr.split(": ");
+        if(parts.length>1){
+            let list=parts[1].split(", ");
+            onlineUsersList=list.filter(u=>u.length>0);
+        }
+    }
+    function showAutocomplete(triggerChar, list, insertPrefix, insertSuffix){
+        let existing=document.getElementById("autocompleteDropdown");
+        if(existing){existing.remove();}
+        if(!list.length) return;
+        let caretPos=userMessage.selectionStart;
+        let textBefore=userMessage.value.substring(0,caretPos);
+        let lastAtIndex=textBefore.lastIndexOf(triggerChar);
+        if(lastAtIndex===-1) return;
+        let query=textBefore.substring(lastAtIndex+1);
+        let filtered=list.filter(item=>item.toLowerCase().startsWith(query.toLowerCase()));
+        if(!filtered.length) return;
+        let dropdown=document.createElement("div");
+        dropdown.id="autocompleteDropdown";
+        dropdown.style.cssText="position:absolute;background:var(--background-card);border:1px solid var(--border-card);border-radius:.3rem;z-index:1000;max-height:150px;overflow-y:auto;";
+        let rect=userMessage.getBoundingClientRect();
+        let cursorCoords=getCaretCoordinates(userMessage,caretPos);
+        dropdown.style.left=rect.left+cursorCoords.left+"px";
+        dropdown.style.top=rect.top+cursorCoords.top+20+"px";
+        filtered.forEach(item=>{
+            let div=document.createElement("div");
+            div.textContent=item;
+            div.style.cssText="padding:.3rem .6rem;cursor:pointer;color:var(--text-primary);";
+            div.onclick=()=>{
+                let before=userMessage.value.substring(0,lastAtIndex+1);
+                let after=userMessage.value.substring(caretPos);
+                let newValue=before+item+insertSuffix+after;
+                userMessage.value=newValue;
+                let newCaret=before.length+item.length+insertSuffix.length;
+                userMessage.selectionStart=newCaret;
+                userMessage.selectionEnd=newCaret;
+                dropdown.remove();
+                userMessage.focus();
+            };
+            dropdown.appendChild(div);
+        });
+        document.body.appendChild(dropdown);
+        function closeOnClickOutside(e){
+            if(!dropdown.contains(e.target)&&e.target!==userMessage){
+                dropdown.remove();
+                document.removeEventListener("click",closeOnClickOutside);
+            }
+        }
+        setTimeout(()=>document.addEventListener("click",closeOnClickOutside),0);
+    }
+    function getCaretCoordinates(element, position){
+        let div=document.createElement("div");
+        let cs=getComputedStyle(element);
+        div.style.cssText="position:absolute;top:0;left:0;visibility:hidden;white-space:pre-wrap;font:"+cs.font+";font-size:"+cs.fontSize+";font-family:"+cs.fontFamily+";";
+        div.textContent=element.value.substring(0,position);
+        document.body.appendChild(div);
+        let coords={left:div.offsetWidth, top:div.offsetHeight};
+        div.remove();
+        return coords;
+    }
+    userMessage.addEventListener("input",function(e){
+        let caretPos=userMessage.selectionStart;
+        let text=userMessage.value;
+        let lastAt=text.lastIndexOf("@",caretPos-1);
+        let lastSlash=text.lastIndexOf("/",caretPos-1);
+        if(lastAt!==-1&&(lastSlash=== -1 || lastAt>lastSlash)){
+            let afterAt=text.substring(lastAt+1,caretPos);
+            if(afterAt.length<=20&&!afterAt.includes(" ")){
+                showAutocomplete("@", onlineUsersList, "@", "");
+            }
+            else{
+                let existing=document.getElementById("autocompleteDropdown");
+                if(existing) existing.remove();
+            }
+        }
+        else if(text.startsWith("/msg ")&&caretPos>5){
+            let remaining=text.substring(5,caretPos);
+            if(!remaining.includes(" ") || remaining.lastIndexOf(" ")<caretPos-5){
+                showAutocomplete("/msg ", onlineUsersList, "", " ");
+            }
+            else{
+                let existing=document.getElementById("autocompleteDropdown");
+                if(existing) existing.remove();
+            }
+        }
+        else{
+            let existing=document.getElementById("autocompleteDropdown");
+            if(existing) existing.remove();
+        }
+    });
     function updateClock(){
         let now=new Date();
         let str=now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});
@@ -157,6 +249,17 @@ document.addEventListener("DOMContentLoaded",()=>{
             socket.close();
             return true;
         }
+        if(message&&message.includes("Current users: ")){
+            updateOnlineUsersList(message);
+        }
+        if(message&&message.includes("Online users: ")){
+            updateOnlineUsersList(message);
+        }
+        if(message&&message.includes("changed their name to ")){
+            if(socket&&socket.readyState===WebSocket.OPEN){
+                socket.send(JSON.stringify({type:"getUsers"}));
+            }
+        }
         return false;
     }
     function addMessageToUI(data){
@@ -224,6 +327,21 @@ document.addEventListener("DOMContentLoaded",()=>{
             checkScrollPosition(messagesList,scrollBtn,autoScroll);
             return;
         }
+        if(data.type==="pong"){
+            let latency=Date.now()-data.timestamp;
+            let li=document.createElement("li");
+            li.innerHTML=`<em>Pong! Latency: ${latency} ms</em>`;
+            li.style.cssText="white-space:pre-wrap;color:gray;font-style:italic;";
+            messagesList.appendChild(li);
+            scrollToBottom(messagesList);
+            checkScrollPosition(messagesList,scrollBtn,autoScroll);
+            return;
+        }
+        if(data.type==="nickAccepted"){
+            currentUser=data.newUsername;
+            showChatError(chatErrorDiv,`Username changed to ${currentUser}`);
+            return;
+        }
         let time=getCurrentTime();
         let formatted=formatMarkdown(data.message||"");
         let ip=data.ip||clientRealIP||"Unknown";
@@ -270,6 +388,11 @@ document.addEventListener("DOMContentLoaded",()=>{
                 console.log("WebSocket connected");
                 reconnectAttempts=0;
                 socket.send(JSON.stringify({type:"join",username:currentUser}));
+                setTimeout(()=>{
+                    if(socket&&socket.readyState===WebSocket.OPEN){
+                        socket.send(JSON.stringify({type:"getUsers"}));
+                    }
+                },500);
             },
             onClose: ()=>{
                 console.log("WebSocket closed");

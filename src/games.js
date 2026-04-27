@@ -498,8 +498,62 @@ export function processCommand(msg,currentUser,socket,clientRealIP,chatPage,user
         if(socket&&socket.readyState===WebSocket.OPEN){socket.send(JSON.stringify({type:"getUsers"}));}
         return true;
     }
+    if(msg==="/ping"){
+        if(socket&&socket.readyState===WebSocket.OPEN){
+            let now=Date.now();
+            socket.send(JSON.stringify({type:"ping", timestamp:now}));
+        }
+        return true;
+    }
+    if(msg.startsWith("/clear")){
+        let parts=msg.split(" ");
+        let n=parts[1]?parseInt(parts[1]):0;
+        let total=messagesList.children.length;
+        if(n===0){
+            while(messagesList.firstChild){messagesList.removeChild(messagesList.firstChild);}
+        }
+        else if(n>0){
+            let removeCount=Math.min(n,total);
+            for(let i=0;i<removeCount;i++){
+                if(messagesList.lastChild){messagesList.removeChild(messagesList.lastChild);}
+            }
+        }
+        return true;
+    }
+    if(msg.startsWith("/nick")){
+        let newName=msg.substring(5).trim();
+        if(!newName){
+            showSystemMessageFn("Usage: /nick <newusername>");
+            return true;
+        }
+        if(socket&&socket.readyState===WebSocket.OPEN){
+            socket.send(JSON.stringify({type:"nick", oldUsername:currentUser, newUsername:newName}));
+        }
+        return true;
+    }
+    if(msg==="/shortcuts"){
+        let shortcuts=`
+Keyboard Shortcuts:
+Ctrl+B - Bold text (**bold**)
+Ctrl+I - Italic text (*italic*)
+Ctrl+M - Inline code (\`code\`)
+Shift+Enter - Send message
+@username - Mention a user (gets highlighted)
+/help - Show this help
+/msg "username" message - Send private message
+/users - List online users
+/nick <newname> - Change your username
+/clear - Clear all messages from your view
+/clear <N> - Clear last N messages
+/ping - Measure connection latency
+/2048 - Play 2048 game
+/chess - Play Chess vs Computer
+        `;
+        showSystemMessageFn(shortcuts);
+        return true;
+    }
     if(msg==="/help"){
-        let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/2048 - play 2048 game\n/chess - play Chess vs Computer\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
+        let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/2048 - play 2048 game\n/chess - play Chess vs Computer\n/nick <newname> - change your username\n/clear [N] - clear all or last N messages\n/ping - measure latency\n/shortcuts - show keyboard shortcuts\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
         showSystemMessageFn(help);
         return true;
     }
