@@ -13,6 +13,7 @@ export default defineConfig({
 	build: {
 		outDir: "dist",
 		target: "es6",
-		cssTarget: "es6"
+		cssTarget: "es6",
+		assetsInlineLimit: 0
 	}
 });
