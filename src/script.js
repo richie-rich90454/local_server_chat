@@ -56,20 +56,27 @@ document.addEventListener("DOMContentLoaded",()=>{
             onlineUsersList=list.filter(u=>u.length>0);
         }
     }
-    function showAutocomplete(triggerChar, list, insertPrefix, insertSuffix){
+    function getCaretCoordinates(element, position){
+        let div=document.createElement("div");
+        let cs=getComputedStyle(element);
+        div.style.cssText="position:absolute;top:0;left:0;visibility:hidden;white-space:pre-wrap;font:"+cs.font+";font-size:"+cs.fontSize+";font-family:"+cs.fontFamily+";";
+        div.textContent=element.value.substring(0,position);
+        document.body.appendChild(div);
+        let coords={left:div.offsetWidth, top:div.offsetHeight};
+        div.remove();
+        return coords;
+    }
+    function showMentionAutocomplete(query){
         let existing=document.getElementById("autocompleteDropdown");
-        if(existing){existing.remove();}
-        if(!list.length) return;
-        let caretPos=userMessage.selectionStart;
-        let textBefore=userMessage.value.substring(0,caretPos);
-        let lastAtIndex=textBefore.lastIndexOf(triggerChar);
-        if(lastAtIndex===-1) return;
-        let query=textBefore.substring(lastAtIndex+1);
-        let filtered=list.filter(item=>item.toLowerCase().startsWith(query.toLowerCase()));
+        if(existing) existing.remove();
+        let filtered=onlineUsersList.filter(u=>u.toLowerCase().startsWith(query.toLowerCase()));
         if(!filtered.length) return;
         let dropdown=document.createElement("div");
         dropdown.id="autocompleteDropdown";
         dropdown.style.cssText="position:absolute;background:var(--background-card);border:1px solid var(--border-card);border-radius:.3rem;z-index:1000;max-height:150px;overflow-y:auto;";
+        let caretPos=userMessage.selectionStart;
+        let textBefore=userMessage.value.substring(0,caretPos);
+        let lastAtIndex=textBefore.lastIndexOf("@");
         let rect=userMessage.getBoundingClientRect();
         let cursorCoords=getCaretCoordinates(userMessage,caretPos);
         dropdown.style.left=rect.left+cursorCoords.left+"px";
@@ -81,9 +88,9 @@ document.addEventListener("DOMContentLoaded",()=>{
             div.onclick=()=>{
                 let before=userMessage.value.substring(0,lastAtIndex+1);
                 let after=userMessage.value.substring(caretPos);
-                let newValue=before+item+insertSuffix+after;
+                let newValue=before+item+after;
                 userMessage.value=newValue;
-                let newCaret=before.length+item.length+insertSuffix.length;
+                let newCaret=before.length+item.length;
                 userMessage.selectionStart=newCaret;
                 userMessage.selectionEnd=newCaret;
                 dropdown.remove();
@@ -100,45 +107,70 @@ document.addEventListener("DOMContentLoaded",()=>{
         }
         setTimeout(()=>document.addEventListener("click",closeOnClickOutside),0);
     }
-    function getCaretCoordinates(element, position){
-        let div=document.createElement("div");
-        let cs=getComputedStyle(element);
-        div.style.cssText="position:absolute;top:0;left:0;visibility:hidden;white-space:pre-wrap;font:"+cs.font+";font-size:"+cs.fontSize+";font-family:"+cs.fontFamily+";";
-        div.textContent=element.value.substring(0,position);
-        document.body.appendChild(div);
-        let coords={left:div.offsetWidth, top:div.offsetHeight};
-        div.remove();
-        return coords;
+    function showMsgAutocomplete(query){
+        let existing=document.getElementById("autocompleteDropdown");
+        if(existing) existing.remove();
+        let filtered=onlineUsersList.filter(u=>u.toLowerCase().startsWith(query.toLowerCase()));
+        if(!filtered.length) return;
+        let dropdown=document.createElement("div");
+        dropdown.id="autocompleteDropdown";
+        dropdown.style.cssText="position:absolute;background:var(--background-card);border:1px solid var(--border-card);border-radius:.3rem;z-index:1000;max-height:150px;overflow-y:auto;";
+        let caretPos=userMessage.selectionStart;
+        let textBefore=userMessage.value.substring(0,caretPos);
+        let match=textBefore.match(/\/msg\s+"([^"]*)$/);
+        let lastQuotePos=match?textBefore.lastIndexOf('"'):-1;
+        let rect=userMessage.getBoundingClientRect();
+        let cursorCoords=getCaretCoordinates(userMessage,caretPos);
+        dropdown.style.left=rect.left+cursorCoords.left+"px";
+        dropdown.style.top=rect.top+cursorCoords.top+20+"px";
+        filtered.forEach(item=>{
+            let div=document.createElement("div");
+            div.textContent=item;
+            div.style.cssText="padding:.3rem .6rem;cursor:pointer;color:var(--text-primary);";
+            div.onclick=()=>{
+                let beforeQuote=userMessage.value.substring(0,lastQuotePos+1);
+                let after=userMessage.value.substring(caretPos);
+                let newValue=beforeQuote+item+'" '+after;
+                userMessage.value=newValue;
+                let newCaret=beforeQuote.length+item.length+2;
+                userMessage.selectionStart=newCaret;
+                userMessage.selectionEnd=newCaret;
+                dropdown.remove();
+                userMessage.focus();
+            };
+            dropdown.appendChild(div);
+        });
+        document.body.appendChild(dropdown);
+        function closeOnClickOutside(e){
+            if(!dropdown.contains(e.target)&&e.target!==userMessage){
+                dropdown.remove();
+                document.removeEventListener("click",closeOnClickOutside);
+            }
+        }
+        setTimeout(()=>document.addEventListener("click",closeOnClickOutside),0);
     }
     userMessage.addEventListener("input",function(e){
         let caretPos=userMessage.selectionStart;
         let text=userMessage.value;
+        let existing=document.getElementById("autocompleteDropdown");
         let lastAt=text.lastIndexOf("@",caretPos-1);
         let lastSlash=text.lastIndexOf("/",caretPos-1);
-        if(lastAt!==-1&&(lastSlash=== -1 || lastAt>lastSlash)){
+        if(lastAt!==-1 && (lastSlash===-1 || lastAt>lastSlash)){
             let afterAt=text.substring(lastAt+1,caretPos);
-            if(afterAt.length<=20&&!afterAt.includes(" ")){
-                showAutocomplete("@", onlineUsersList, "@", "");
+            if(afterAt.length<=20 && !afterAt.includes(" ")){
+                showMentionAutocomplete(afterAt);
+                return;
             }
-            else{
-                let existing=document.getElementById("autocompleteDropdown");
-                if(existing) existing.remove();
-            }
+            else if(existing) existing.remove();
         }
-        else if(text.startsWith("/msg ")&&caretPos>5){
-            let remaining=text.substring(5,caretPos);
-            if(!remaining.includes(" ") || remaining.lastIndexOf(" ")<caretPos-5){
-                showAutocomplete("/msg ", onlineUsersList, "", " ");
-            }
-            else{
-                let existing=document.getElementById("autocompleteDropdown");
-                if(existing) existing.remove();
-            }
+        let textBefore=text.substring(0,caretPos);
+        let msgMatch=textBefore.match(/\/msg\s+"([^"]*)$/);
+        if(msgMatch){
+            let query=msgMatch[1];
+            showMsgAutocomplete(query);
+            return;
         }
-        else{
-            let existing=document.getElementById("autocompleteDropdown");
-            if(existing) existing.remove();
-        }
+        if(existing) existing.remove();
     });
     function updateClock(){
         let now=new Date();
