@@ -613,3 +613,54 @@ pre code.hljs{
 		right:15px;
 	}
 }
+#autocompleteDropdown{
+    position:absolute;
+    background:var(--background-card);
+    border:1px solid var(--border-card);
+    border-radius:.3rem;
+    z-index:1000;
+    max-height:150px;
+    overflow-y:auto;
+    box-shadow:0 2px 8px var(--box-shadow);
+}
+#autocompleteDropdown div{
+    padding:.3rem .6rem;
+    cursor:pointer;
+    color:var(--text-primary);
+    transition:background-color .1s;
+}
+#autocompleteDropdown div:hover{
+    background-color:var(--button-hover);
+}
+#chessOverlay select,
+#chessOverlay input,
+#chessOverlay button{
+    background-color:var(--button-bg);
+    color:var(--text-primary);
+    border:1px solid var(--border-card);
+    border-radius:.3rem;
+    padding:.3rem .6rem;
+}
+#chessOverlay select:hover,
+#chessOverlay button:hover{
+    background-color:var(--button-hover);
+}
+#chessBoard > div > div[style*="border:3px solid red"]{
+    box-shadow:0 0 0 2px var(--message-user);
+}
+#chessOverlay .modal-box select{
+    width:100%;
+    margin:.5rem 0;
+}
+body[data-theme="dark"] #chessBoard div{
+    text-shadow:0 0 1px rgba(0,0,0,0.5);
+}
+#exportFormat{
+    background-color:var(--button-bg);
+    color:var(--text-primary);
+    border:1px solid var(--border-card);
+}
+#exportFormat option{
+    background-color:var(--background-card);
+    color:var(--text-primary);
+}

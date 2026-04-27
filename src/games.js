@@ -297,112 +297,284 @@ export function create2048Game(container){
         window.removeEventListener("keydown",handleKey);
     };
 }
-export async function createChessGame(container){
-    try{
-        const chessModule=await import("chess.js");
-        const Chess=chessModule.Chess||chessModule.default;
-        if(!Chess) throw new Error("Chess module not loaded");
-        let game=new Chess();
-        let boardDiv=document.createElement("div");
-        boardDiv.style.cssText="display:grid;grid-template-columns:repeat(8,1fr);width:min(400px,70vw);height:min(400px,70vw);margin:0 auto;";
-        let statusDiv=document.createElement("div");
-        statusDiv.style.cssText="margin-top:10px;text-align:center;color:var(--text-primary);font-size:0.9rem;";
-        statusDiv.textContent="Your turn (White)";
-        let selectedSquare=null;
-        let aiThinking=false;
-        function getRandomMove(){
-            let moves=game.moves({verbose:true});
-            if(moves.length===0) return null;
-            let randomIndex=Math.floor(Math.random()*moves.length);
-            return moves[randomIndex];
-        }
-        function makeAIMove(){
-            if(aiThinking) return;
-            if(game.game_over()){
-                statusDiv.textContent=game.in_checkmate()?"Checkmate! "+(game.turn()==="w"?"Black wins":"White wins"):"Game over!";
-                return;
+const pieceValues={p:100,n:320,b:330,r:500,q:900,k:20000};
+const pawnTable=[
+    0,0,0,0,0,0,0,0,
+    0.5,1,1,-0.5,-0.5,1,1,0.5,
+    0.1,0.2,0.4,-0.2,-0.2,0.4,0.2,0.1,
+    0,0,0,0,0,0,0,0,
+    -0.2,-0.1,0.1,0.2,0.2,0.1,-0.1,-0.2,
+    -0.3,-0.2,0,0.1,0.1,0,-0.2,-0.3,
+    -0.4,-0.3,-0.2,-0.1,-0.1,-0.2,-0.3,-0.4,
+    0,0,0,0,0,0,0,0
+];
+const knightTable=[
+    -2,-1,0,0,0,0,-1,-2,
+    -1,0,0.5,0.5,0.5,0.5,0,-1,
+    0,0.5,0.5,1,1,0.5,0.5,0,
+    0,0.5,1,1.5,1.5,1,0.5,0,
+    0,0.5,1,1.5,1.5,1,0.5,0,
+    0,0.5,0.5,1,1,0.5,0.5,0,
+    -1,0,0.5,0.5,0.5,0.5,0,-1,
+    -2,-1,0,0,0,0,-1,-2
+];
+const bishopTable=[
+    -2,-1,0,0,0,0,-1,-2,
+    -1,0,0,0,0,0,0,-1,
+    0,0,0,0.5,0.5,0,0,0,
+    0,0.5,0.5,1,1,0.5,0.5,0,
+    0,0.5,0.5,1,1,0.5,0.5,0,
+    0,0,0,0.5,0.5,0,0,0,
+    -1,0,0,0,0,0,0,-1,
+    -2,-1,0,0,0,0,-1,-2
+];
+const rookTable=[
+    0,0,0,0,0,0,0,0,
+    0.5,1,1,1,1,1,1,0.5,
+    -0.5,0,0,0,0,0,0,-0.5,
+    -0.5,0,0,0,0,0,0,-0.5,
+    -0.5,0,0,0,0,0,0,-0.5,
+    -0.5,0,0,0,0,0,0,-0.5,
+    -0.5,0,0,0,0,0,0,-0.5,
+    0,0,0,0.5,0.5,0,0,0
+];
+const queenTable=[
+    -2,-1,0,0,0,0,-1,-2,
+    -1,0,0,0,0,0,0,-1,
+    0,0,0.5,0.5,0.5,0.5,0,0,
+    0,0.5,0.5,1,1,0.5,0.5,0,
+    0,0.5,0.5,1,1,0.5,0.5,0,
+    0,0,0.5,0.5,0.5,0.5,0,0,
+    -1,0,0,0,0,0,0,-1,
+    -2,-1,0,0,0,0,-1,-2
+];
+const kingTable=[
+    -3,-4,-4,-5,-5,-4,-4,-3,
+    -3,-4,-4,-5,-5,-4,-4,-3,
+    -3,-4,-4,-5,-5,-4,-4,-3,
+    -3,-4,-4,-5,-5,-4,-4,-3,
+    -2,-3,-3,-4,-4,-3,-3,-2,
+    -1,-2,-2,-2,-2,-2,-2,-1,
+    0.5,0.5,0,0,0,0,0.5,0.5,
+    1,1.5,0.5,0,0,0.5,1.5,1
+];
+function getPieceSquareValue(piece, square, isWhite){
+    let idx=square[1]*8+square[0];
+    if(piece.type==='p'){
+        let val=pawnTable[idx];
+        return isWhite?val:-val;
+    }
+    else if(piece.type==='n'){
+        let val=knightTable[idx];
+        return isWhite?val:-val;
+    }
+    else if(piece.type==='b'){
+        let val=bishopTable[idx];
+        return isWhite?val:-val;
+    }
+    else if(piece.type==='r'){
+        let val=rookTable[idx];
+        return isWhite?val:-val;
+    }
+    else if(piece.type==='q'){
+        let val=queenTable[idx];
+        return isWhite?val:-val;
+    }
+    else if(piece.type==='k'){
+        let val=kingTable[idx];
+        return isWhite?val:-val;
+    }
+    return 0;
+}
+function evaluateBoard(game){
+    let total=0;
+    let board=game.board();
+    for(let i=0;i<8;i++){
+        for(let j=0;j<8;j++){
+            let piece=board[i][j];
+            if(piece){
+                let value=pieceValues[piece.type];
+                let squareBonus=getPieceSquareValue(piece, [j,i], piece.color==='w');
+                let pieceValue=value+squareBonus;
+                total+=(piece.color==='w'?pieceValue:-pieceValue);
             }
-            if(game.turn()==="b"){
-                aiThinking=true;
-                setTimeout(()=>{
-                    let move=getRandomMove();
-                    if(move){
-                        game.move(move);
-                        renderBoard();
-                        statusDiv.textContent=game.game_over()?"Game over! "+(game.in_checkmate()?"Checkmate! ":"")+(game.turn()==="w"?"Black wins":"White wins"):"Your turn (White)";
+        }
+    }
+    return total;
+}
+function minimax(game, depth, alpha, beta, isMaximizing){
+    if(depth===0 || game.game_over()){
+        return evaluateBoard(game);
+    }
+    let moves=game.moves({verbose:true});
+    if(isMaximizing){
+        let maxEval=-Infinity;
+        for(let move of moves){
+            game.move(move);
+            let moveValue=minimax(game, depth-1, alpha, beta, false);
+            game.undo();
+            maxEval=Math.max(maxEval, moveValue);
+            alpha=Math.max(alpha, moveValue);
+            if(beta<=alpha) break;
+        }
+        return maxEval;
+    }
+    else{
+        let minEval=Infinity;
+        for(let move of moves){
+            game.move(move);
+            let moveValue=minimax(game, depth-1, alpha, beta, true);
+            game.undo();
+            minEval=Math.min(minEval, moveValue);
+            beta=Math.min(beta, moveValue);
+            if(beta<=alpha) break;
+        }
+        return minEval;
+    }
+}
+function getBestMove(game, difficulty){
+    let depth;
+    if(difficulty==='easy') depth=1;
+    else if(difficulty==='medium') depth=2;
+    else depth=3;
+    let moves=game.moves({verbose:true});
+    let bestMove=null;
+    let bestValue=-Infinity;
+    for(let move of moves){
+        game.move(move);
+        let moveValue=-minimax(game, depth-1, -Infinity, Infinity, false);
+        game.undo();
+        if(moveValue>bestValue){
+            bestValue=moveValue;
+            bestMove=move;
+        }
+    }
+    return bestMove;
+}
+export async function createChessGame(container, options={}){
+    let mode=options.mode||'ai';
+    let difficulty=options.difficulty||'medium';
+    let boardDiv=document.createElement("div");
+    boardDiv.style.cssText="display:grid;grid-template-columns:repeat(8,1fr);width:min(400px,70vw);height:min(400px,70vw);margin:0 auto;";
+    let statusDiv=document.createElement("div");
+    statusDiv.style.cssText="margin-top:10px;text-align:center;color:var(--text-primary);font-size:0.9rem;";
+    let controlsDiv=document.createElement("div");
+    controlsDiv.style.cssText="margin-top:10px;text-align:center;";
+    let resignBtn=document.createElement("button");
+    resignBtn.textContent="Resign";
+    resignBtn.style.cssText="margin:0 5px;padding:4px 12px;background:var(--button-bg);border:1px solid var(--border-card);border-radius:.3rem;cursor:pointer;color:var(--text-primary);";
+    controlsDiv.appendChild(resignBtn);
+    container.appendChild(boardDiv);
+    container.appendChild(statusDiv);
+    container.appendChild(controlsDiv);
+    let game=null;
+    let selectedSquare=null;
+    let aiThinking=false;
+    let playerColor='w';
+    let gameActive=true;
+    const chessModule=await import("chess.js");
+    const Chess=chessModule.Chess||chessModule.default;
+    game=new Chess();
+    function renderBoard(){
+        let board=game.board();
+        boardDiv.innerHTML="";
+        for(let i=0;i<8;i++){
+            for(let j=0;j<8;j++){
+                let square=String.fromCharCode(97+j)+(8-i);
+                let piece=board[i][j];
+                let squareDiv=document.createElement("div");
+                let isLight=(i+j)%2===0;
+                squareDiv.style.cssText=`width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:min(2rem,6vw);cursor:pointer;background-color:${isLight?"#f0d9b5":"#b58863"};${selectedSquare===square?"border:3px solid red;box-sizing:border-box;":""}`;
+                if(piece){
+                    let pieceChar="";
+                    switch(piece.type){
+                        case "k": pieceChar=piece.color==="w"?"♔":"♚";break;
+                        case "q": pieceChar=piece.color==="w"?"♕":"♛";break;
+                        case "r": pieceChar=piece.color==="w"?"♖":"♜";break;
+                        case "b": pieceChar=piece.color==="w"?"♗":"♝";break;
+                        case "n": pieceChar=piece.color==="w"?"♘":"♞";break;
+                        case "p": pieceChar=piece.color==="w"?"♙":"♟";break;
                     }
-                    aiThinking=false;
-                },100);
+                    squareDiv.textContent=pieceChar;
+                }
+                squareDiv.onclick=()=>{
+                    if(!gameActive) return;
+                    if(aiThinking) return;
+                    let turn=game.turn();
+                    if(turn!==playerColor) return;
+                    if(selectedSquare===null){
+                        let pieceAtSquare=game.get(square);
+                        if(pieceAtSquare && pieceAtSquare.color===playerColor){
+                            selectedSquare=square;
+                            renderBoard();
+                        }
+                    }
+                    else{
+                        let move=game.move({from:selectedSquare,to:square,promotion:"q"});
+                        if(move){
+                            selectedSquare=null;
+                            renderBoard();
+                            if(game.game_over()){
+                                let result=game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over");
+                                statusDiv.textContent=result;
+                                gameActive=false;
+                                if(options.onGameEnd) options.onGameEnd(result);
+                            }
+                            else{
+                                statusDiv.textContent="Computer is thinking...";
+                                makeAIMove();
+                            }
+                        }
+                        else{
+                            selectedSquare=null;
+                            renderBoard();
+                        }
+                    }
+                };
+                boardDiv.appendChild(squareDiv);
             }
         }
-        function renderBoard(){
-            let board=game.board();
-            boardDiv.innerHTML="";
-            for(let i=0;i<8;i++){
-                for(let j=0;j<8;j++){
-                    let square=String.fromCharCode(97+j)+(8-i);
-                    let piece=board[i][j];
-                    let squareDiv=document.createElement("div");
-                    squareDiv.style.cssText=`width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:min(2rem,6vw);cursor:pointer;background-color:${(i+j)%2==0?"#f0d9b5":"#b58863"};${selectedSquare===square?"border:2px solid red;box-sizing:border-box;":""}`;
-                    if(piece){
-                        let pieceChar="";
-                        switch(piece.type){
-                            case "k": pieceChar=piece.color==="w"?"♔":"♚";break;
-                            case "q": pieceChar=piece.color==="w"?"♕":"♛";break;
-                            case "r": pieceChar=piece.color==="w"?"♖":"♜";break;
-                            case "b": pieceChar=piece.color==="w"?"♗":"♝";break;
-                            case "n": pieceChar=piece.color==="w"?"♘":"♞";break;
-                            case "p": pieceChar=piece.color==="w"?"♙":"♟";break;
-                        }
-                        squareDiv.textContent=pieceChar;
-                    }
-                    squareDiv.onclick=()=>{
-                        if(aiThinking) return;
-                        if(game.game_over()){
-                            statusDiv.textContent="Game over. Close and reopen to play new game.";
-                            return;
-                        }
-                        if(game.turn()!=="w"){
-                            statusDiv.textContent="Computer is thinking...";
-                            return;
-                        }
-                        if(selectedSquare===null){
-                            let pieceAtSquare=game.get(square);
-                            if(pieceAtSquare&&pieceAtSquare.color==="w"){
-                                selectedSquare=square;
-                                renderBoard();
-                            }
-                        }else{
-                            let move=game.move({from:selectedSquare,to:square,promotion:"q"});
-                            if(move){
-                                selectedSquare=null;
-                                renderBoard();
-                                if(game.game_over()){
-                                    statusDiv.textContent=game.in_checkmate()?"Checkmate! You win!":(game.in_stalemate()?"Stalemate!":"Game over!");
-                                }else{
-                                    statusDiv.textContent="Computer is thinking...";
-                                    makeAIMove();
-                                }
-                            }else{
-                                selectedSquare=null;
-                                renderBoard();
-                            }
-                        }
-                    };
-                    boardDiv.appendChild(squareDiv);
+        if(game.game_over()){
+            let result=game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over");
+            statusDiv.textContent=result;
+            gameActive=false;
+            if(options.onGameEnd) options.onGameEnd(result);
+        }
+    }
+    async function makeAIMove(){
+        if(!gameActive || aiThinking) return;
+        let turn=game.turn();
+        let aiColor=(playerColor==='w'?'b':'w');
+        if(turn!==aiColor) return;
+        aiThinking=true;
+        setTimeout(()=>{
+            let bestMove=getBestMove(game, difficulty);
+            if(bestMove){
+                game.move(bestMove);
+                renderBoard();
+                if(game.game_over()){
+                    let result=game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over");
+                    statusDiv.textContent=result;
+                    gameActive=false;
+                    if(options.onGameEnd) options.onGameEnd(result);
+                }
+                else{
+                    statusDiv.textContent="Your turn";
                 }
             }
-            if(!game.game_over() && game.turn()==="b" && !aiThinking){
-                makeAIMove();
-            }
-        }
-        renderBoard();
-        container.appendChild(boardDiv);
-        container.appendChild(statusDiv);
-    }catch(err){
-        console.error(err);
-        container.innerHTML="<p style=\"color:red\">Chess game failed to load. Please install chess.js@0.10.3</p>";
+            aiThinking=false;
+        }, 100);
     }
+    statusDiv.textContent="Your turn (White)";
+    renderBoard();
+    resignBtn.onclick=()=>{
+        if(!gameActive) return;
+        gameActive=false;
+        let result=(playerColor==='w')?"Black wins by resignation":"White wins by resignation";
+        statusDiv.textContent=result;
+        if(options.onGameEnd) options.onGameEnd(result);
+    };
+    container._cleanup=()=>{};
 }
 export function processCommand(msg,currentUser,socket,clientRealIP,chatPage,userMessage,chatErrorDiv,messagesList,showSystemMessageFn,applyGoldBorderFn,updateDeveloperModeFn){
     if(msg==="/unlock"){
@@ -443,24 +615,54 @@ export function processCommand(msg,currentUser,socket,clientRealIP,chatPage,user
         let modal=document.createElement("div");
         modal.style.cssText="background:var(--background-card);border:2px solid var(--border-card);border-radius:.5rem;padding:1rem;max-width:500px;width:90%;box-shadow:0 4px 20px var(--box-shadow);";
         let title=document.createElement("h3");
-        title.textContent="Chess Game (Human vs Computer)";
+        title.textContent="Play Chess vs Computer";
         title.style.marginTop="0";
         title.style.color="var(--text-primary)";
-        let boardContainer=document.createElement("div");
-        boardContainer.id="chessBoard";
-        let closeBtn=document.createElement("button");
-        closeBtn.textContent="Close";
-        closeBtn.style.cssText="margin-top:1rem;padding:0.3rem 1rem;background:var(--button-bg);border:1px solid var(--border-card);border-radius:.3rem;cursor:pointer;color:var(--text-primary);";
-        closeBtn.onclick=()=>{
-            if(boardContainer._cleanup) boardContainer._cleanup();
-            overlay.remove();
-        };
+        let diffDiv=document.createElement("div");
+        diffDiv.style.cssText="margin:10px 0;";
+        diffDiv.style.color="var(--text-primary)"
+        diffDiv.innerHTML="Difficulty: <select id='chessDiff'><option value='easy'>Easy</option><option value='medium' selected>Medium</option><option value='hard'>Hard</option></select>";
+        let startBtn=document.createElement("button");
+        startBtn.textContent="Start Game";
+        startBtn.style.cssText="margin-top:1rem;padding:0.3rem 1rem;background:var(--button-bg);border:1px solid var(--border-card);border-radius:.3rem;cursor:pointer;color:var(--text-primary);";
+        let cancelBtn=document.createElement("button");
+        cancelBtn.textContent="Cancel";
+        cancelBtn.style.cssText="margin-top:1rem;margin-left:0.5rem;padding:0.3rem 1rem;background:var(--button-bg);border:1px solid var(--border-card);border-radius:.3rem;cursor:pointer;color:var(--text-primary);";
         modal.appendChild(title);
-        modal.appendChild(boardContainer);
-        modal.appendChild(closeBtn);
+        modal.appendChild(diffDiv);
+        modal.appendChild(startBtn);
+        modal.appendChild(cancelBtn);
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
-        createChessGame(boardContainer);
+        startBtn.onclick=async ()=>{
+            let difficulty=document.getElementById("chessDiff").value;
+            let boardContainer=document.createElement("div");
+            boardContainer.id="chessBoard";
+            let gameOverlay=document.createElement("div");
+            gameOverlay.id="chessOverlay";
+            gameOverlay.style.cssText="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1001;";
+            let gameModal=document.createElement("div");
+            gameModal.style.cssText="background:var(--background-card);border:2px solid var(--border-card);border-radius:.5rem;padding:1rem;max-width:500px;width:90%;box-shadow:0 4px 20px var(--box-shadow);";
+            let gameTitle=document.createElement("h3");
+            gameTitle.textContent="Chess vs Computer";
+            gameTitle.style.marginTop="0";
+            gameTitle.style.color="var(--text-primary)";
+            let closeBtn=document.createElement("button");
+            closeBtn.textContent="Close";
+            closeBtn.style.cssText="margin-top:1rem;padding:0.3rem 1rem;background:var(--button-bg);border:1px solid var(--border-card);border-radius:.3rem;cursor:pointer;color:var(--text-primary);";
+            closeBtn.onclick=()=>{
+                if(boardContainer._cleanup) boardContainer._cleanup();
+                gameOverlay.remove();
+            };
+            gameModal.appendChild(gameTitle);
+            gameModal.appendChild(boardContainer);
+            gameModal.appendChild(closeBtn);
+            gameOverlay.appendChild(gameModal);
+            document.body.appendChild(gameOverlay);
+            await createChessGame(boardContainer, {mode:'ai', difficulty});
+            overlay.remove();
+        };
+        cancelBtn.onclick=()=>overlay.remove();
         return true;
     }
     if(msg==="/2048"){
@@ -547,13 +749,13 @@ Shift+Enter - Send message
 /clear <N> - Clear last N messages
 /ping - Measure connection latency
 /2048 - Play 2048 game
-/chess - Play Chess vs Computer
+/chess - Play Chess vs Computer (choose difficulty)
         `;
         showSystemMessageFn(shortcuts);
         return true;
     }
     if(msg==="/help"){
-        let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/2048 - play 2048 game\n/chess - play Chess vs Computer\n/nick <newname> - change your username\n/clear [N] - clear all or last N messages\n/ping - measure latency\n/shortcuts - show keyboard shortcuts\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
+        let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/2048 - play 2048 game\n/chess - play Chess vs Computer (difficulty selection)\n/nick <newname> - change your username\n/clear [N] - clear all or last N messages\n/ping - measure latency\n/shortcuts - show keyboard shortcuts\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
         showSystemMessageFn(help);
         return true;
     }
