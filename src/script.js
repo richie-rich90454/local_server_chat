@@ -655,5 +655,17 @@ document.addEventListener("DOMContentLoaded",()=>{
             scrollBtn.style.display="none";
         });
     }
-    initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml);
+    setTimeout(()=>{
+        if(socket&&socket.readyState===WebSocket.OPEN){
+            initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml);
+        }
+        else{
+            const checkSocket=setInterval(()=>{
+                if(socket&&socket.readyState===WebSocket.OPEN){
+                    clearInterval(checkSocket);
+                    initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml);
+                }
+            },100);
+        }
+    },500);
 });
