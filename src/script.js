@@ -2,6 +2,7 @@ import {hljs, escapeHtml, formatMarkdown, highlightMentions} from "./highlight-c
 import {createModal, showChatError, shakeElement, getCurrentTime, scrollToBottom, checkScrollPosition, updateTypingIndicatorUI, wrapSelection, convertToWebP, insertReplyQuote, insertForwardToPrivate, exportChatLog, applyTheme, getSystemTheme, setHighlightTheme} from "./ui-helpers.js";
 import {connectWebSocket} from "./websocket.js";
 import {create2048Game, createChessGame, processCommand, updateDeveloperMode, applyGoldBorder, showSystemMessage, doRandomEasterEgg, getUnlockCount, incrementUnlockCount} from "./games.js";
+import {initFileHandlers,handleFileMessage,sendMultipleFiles} from "./file-handler.js";
 document.addEventListener("DOMContentLoaded",()=>{
     let headerControls=document.getElementById("headerControls");
     if(headerControls&&!document.getElementById("exportFormat")){
@@ -304,6 +305,10 @@ document.addEventListener("DOMContentLoaded",()=>{
             if(data.typing){currentTypers.add(data.username);}
             else{currentTypers.delete(data.username);}
             updateTypingIndicator();
+            return;
+        }
+        if(data.type==="file"){
+            handleFileMessage(data,currentUser,clientRealIP,getCurrentTime,escapeHtml,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,showChatError,chatErrorDiv);
             return;
         }
         if(data.type==="system"){
@@ -650,4 +655,5 @@ document.addEventListener("DOMContentLoaded",()=>{
             scrollBtn.style.display="none";
         });
     }
+    initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml);
 });

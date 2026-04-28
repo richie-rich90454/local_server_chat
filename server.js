@@ -222,6 +222,31 @@ wsServer.on("connection",(ws,req)=>{
             }
             return;
         }
+        else if(data.type=="file"){
+            if(data.fileSize>10*1024*1024){
+                ws.send(JSON.stringify({
+                    type:"system",
+                    message:"File too large for server relay"
+                }));
+                return;
+            }
+            const payload={
+                type:"file",
+                username:data.username,
+                fileName:data.fileName,
+                fileSize:data.fileSize,
+                mimeType:data.mimeType,
+                fileData:data.fileData,
+                ip:ws.clientIP||"Unknown IP",
+                timestamp:data.timestamp
+            };
+            clients.forEach(client=>{
+                if(client.readyState===WebSocket.OPEN){
+                    client.send(JSON.stringify(payload));
+                }
+            });
+            return;
+        }
         if(!checkRateAndBan(data.username)){
             ws.send(JSON.stringify({type:"system",message:"You are temporarily banned for sending too many messages. Please wait 5 seconds."}));
             return;

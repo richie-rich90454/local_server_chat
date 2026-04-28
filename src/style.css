@@ -664,3 +664,144 @@ body[data-theme="dark"] #chessBoard div{
     background-color:var(--background-card);
     color:var(--text-primary);
 }
+.file-message{
+	display:flex;
+	align-items:center;
+	gap:10px;
+	padding:8px;
+	background:var(--background-card);
+	border:1px solid var(--border-input);
+	border-radius:8px;
+	margin-top:5px;
+	cursor:pointer;
+	transition:all 0.2s ease;
+}
+.file-message:hover{
+	background:var(--button-hover);
+	transform:translateY(-1px);
+}
+.file-icon{
+	flex-shrink:0;
+	width:32px;
+	height:32px;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+}
+.file-info{
+	flex:1;
+	min-width:0;
+}
+.file-name{
+	font-weight:500;
+	color:var(--text-primary);
+	word-break:break-all;
+	font-size:0.9rem;
+}
+.file-size{
+	font-size:0.75rem;
+	color:var(--text-secondary);
+	margin-top:2px;
+}
+.download-icon{
+	flex-shrink:0;
+	opacity:0.6;
+	transition:opacity 0.2s;
+}
+.file-message:hover .download-icon{
+	opacity:1;
+}
+.file-preview-image{
+	max-width:200px;
+	max-height:150px;
+	border-radius:4px;
+	margin-top:5px;
+}
+.upload-progress{
+	position:fixed;
+	bottom:20px;
+	right:20px;
+	background:var(--background-card);
+	border:1px solid var(--border-card);
+	border-radius:8px;
+	padding:12px;
+	min-width:250px;
+	z-index:1000;
+	box-shadow:0 2px 10px var(--box-shadow);
+}
+.upload-progress.hidden{
+	display:none;
+}
+.progress-bar{
+	width:100%;
+	height:4px;
+	background:var(--button-bg);
+	border-radius:2px;
+	overflow:hidden;
+	margin-top:8px;
+}
+.progress-fill{
+	height:100%;
+	background:var(--message-user);
+	width:0%;
+	transition:width 0.3s ease;
+}
+.upload-filename{
+	font-size:0.85rem;
+	color:var(--text-primary);
+	margin-bottom:5px;
+}
+.file-type-badge{
+	display:inline-block;
+	padding:2px 6px;
+	border-radius:4px;
+	font-size:0.7rem;
+	font-weight:500;
+	margin-left:8px;
+}
+.file-type-image{
+	background:#4CAF50;
+	color:#FFF;
+}
+.file-type-pdf{
+	background:#f44336;
+	color:#FFF;
+}
+.file-type-archive{
+	background:#ff9800;
+	color:#FFF;
+}
+.file-type-document{
+	background:#2196F3;
+	color:#FFF;
+}
+.file-type-code{
+	background:#9C27B0;
+	color:#FFF;
+}
+.file-type-other{
+	background:#757575;
+	color:#FFF;
+}
+#fileBtn{
+	display:inline-flex;
+	align-items:center;
+	justify-content:center;
+	padding:0 0.8rem;
+	height:2.2rem;
+	width:auto;
+	font-size:0.9rem;
+	background-color:var(--button-bg);
+	border:1px solid var(--border-card);
+	border-radius:0.3rem;
+	cursor:pointer;
+	color:var(--text-primary);
+	line-height:normal;
+	vertical-align:middle;
+	box-sizing:border-box;
+	margin:0;
+	flex-shrink:0;
+}
+#fileBtn:hover{
+	background-color:var(--button-hover);
+}
