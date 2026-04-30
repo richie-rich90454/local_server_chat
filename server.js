@@ -223,7 +223,7 @@ wsServer.on("connection",(ws,req)=>{
             return;
         }
         else if(data.type=="file"){
-            if(data.fileSize>10*1024*1024){
+            if(data.fileSize>500*1024*1024){
                 ws.send(JSON.stringify({
                     type:"system",
                     message:"File too large for server relay"

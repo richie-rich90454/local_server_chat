@@ -1,5 +1,4 @@
-// file-handler.js
-export const MAX_FILE_SIZE=100*1024*1024;
+export const MAX_FILE_SIZE=500*1024*1024;
 export const ALLOWED_FILE_TYPES=[];
 export function formatFileSize(bytes){
     if(bytes===0)return"0 Bytes";
