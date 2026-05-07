@@ -1,5 +1,7 @@
-export const MAX_FILE_SIZE=500*1024*1024;
+export const MAX_FILE_SIZE=5*1024*1024*1024;
+export const CHUNK_SIZE=64*1024;
 export const ALLOWED_FILE_TYPES=[];
+
 export function formatFileSize(bytes){
     if(bytes===0)return"0 Bytes";
     const k=1024;
@@ -28,14 +30,6 @@ export function getFileIconSVG(fileType){
         default:`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V9L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 2V9H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`
     };
     return icons[fileType]||icons.default;
-}
-export function readFileAsBase64(file){
-    return new Promise((resolve,reject)=>{
-        const reader=new FileReader();
-        reader.onload=()=>resolve(reader.result);
-        reader.onerror=reject;
-        reader.readAsDataURL(file);
-    });
 }
 export function createFileMessageHTML(fileData,fileName,fileSize,mimeType,username,ip,timestamp,isSender,escapeHtml){
     const fileType=getFileTypeCategory(mimeType);
@@ -104,7 +98,7 @@ export function hideUploadProgress(){
         },300);
     }
 }
-export async function sendFile(file,socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv){
+export async function sendFileChunked(file, socket, currentUser, clientRealIP, getCurrentTime, showChatError, chatErrorDiv, onSendComplete){
     if(file.size>MAX_FILE_SIZE){
         showChatError(chatErrorDiv,"File too large! Maximum size: "+formatFileSize(MAX_FILE_SIZE));
         return false;
@@ -113,29 +107,47 @@ export async function sendFile(file,socket,currentUser,clientRealIP,getCurrentTi
         showChatError(chatErrorDiv,"Connection lost. Cannot send file.");
         return false;
     }
+    const totalChunks=Math.ceil(file.size/CHUNK_SIZE);
+    const transferId="f_"+Date.now().toString(36)+"_"+Math.random().toString(36).substr(2,9);
     try{
         showUploadProgress(file.name);
-        let progressInterval;
-        if(file.size>500*1024){
-            let progress=0;
-            progressInterval=setInterval(()=>{
-                progress=Math.min(progress+10,90);
-                updateUploadProgress(progress);
-            },100);
-        }
-        const base64Data=await readFileAsBase64(file);
-        if(progressInterval)clearInterval(progressInterval);
-        updateUploadProgress(100);
         socket.send(JSON.stringify({
-            type:"file",
-            username:currentUser,
+            type:"file-start",
+            transferId:transferId,
             fileName:file.name,
             fileSize:file.size,
             mimeType:file.type,
-            fileData:base64Data,
+            totalChunks:totalChunks,
+            chunkSize:CHUNK_SIZE,
+            username:currentUser,
             ip:clientRealIP,
             timestamp:getCurrentTime()
         }));
+        for(let i=0;i<totalChunks;i++){
+            const start=i*CHUNK_SIZE;
+            const end=Math.min(start+CHUNK_SIZE,file.size);
+            const slice=file.slice(start,end);
+            const arrayBuf=await slice.arrayBuffer();
+            const tidLen=transferId.length;
+            const headerLen=4+tidLen+4;
+            const header=new ArrayBuffer(headerLen);
+            const view=new DataView(header);
+            view.setUint32(0,tidLen,false);
+            for(let j=0;j<tidLen;j++) view.setUint8(4+j,transferId.charCodeAt(j));
+            view.setUint32(4+tidLen,i,false);
+            const combined=new Uint8Array(headerLen+arrayBuf.byteLength);
+            combined.set(new Uint8Array(header),0);
+            combined.set(new Uint8Array(arrayBuf),headerLen);
+            socket.send(combined.buffer);
+            const pct=Math.round(((i+1)/totalChunks)*100);
+            updateUploadProgress(pct);
+            await new Promise(r=>setTimeout(r,0));
+        }
+        socket.send(JSON.stringify({type:"file-end",transferId:transferId}));
+        if(onSendComplete){
+            const url=URL.createObjectURL(file);
+            onSendComplete(url, file.name, file.size, file.type, getCurrentTime());
+        }
         setTimeout(()=>hideUploadProgress(),500);
         return true;
     }
@@ -145,7 +157,7 @@ export async function sendFile(file,socket,currentUser,clientRealIP,getCurrentTi
         return false;
     }
 }
-export async function sendMultipleFiles(files,socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv){
+export async function sendMultipleFiles(files, socket, currentUser, clientRealIP, getCurrentTime, showChatError, chatErrorDiv, onSendComplete){
     const validFiles=Array.from(files).filter(file=>{
         if(file.size>MAX_FILE_SIZE){
             showChatError(chatErrorDiv,"Skipping "+file.name+": Too large");
@@ -156,76 +168,123 @@ export async function sendMultipleFiles(files,socket,currentUser,clientRealIP,ge
     if(validFiles.length===0)return;
     showChatError(chatErrorDiv,"Sending "+validFiles.length+" file(s)...");
     for(const file of validFiles){
-        await sendFile(file,socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv);
+        await sendFileChunked(file, socket, currentUser, clientRealIP, getCurrentTime, showChatError, chatErrorDiv, onSendComplete);
         await new Promise(resolve=>setTimeout(resolve,500));
     }
     showChatError(chatErrorDiv,"Sent "+validFiles.length+" file(s)");
 }
-export function downloadFile(fileData,fileName,mimeType,showChatError,chatErrorDiv){
-    try{
-        let base64Data=fileData;
-        if(fileData&&fileData.includes(",")){
-            base64Data=fileData.split(",")[1];
-        }
-        const binaryData=atob(base64Data);
-        const arrayBuffer=new ArrayBuffer(binaryData.length);
-        const uint8Array=new Uint8Array(arrayBuffer);
-        for(let i=0;i<binaryData.length;i++){
-            uint8Array[i]=binaryData.charCodeAt(i);
-        }
-        const blob=new Blob([uint8Array],{type:mimeType});
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement("a");
-        a.href=url;
-        a.download=fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-    catch(err){
-        console.error("Download failed:",err);
-        showChatError(chatErrorDiv,"Failed to download file");
-    }
-}
-export function handleFileMessage(data,currentUser,clientRealIP,getCurrentTime,escapeHtml,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,showChatError,chatErrorDiv){
-    const time=data.timestamp||getCurrentTime();
-    const ip=data.ip||clientRealIP||"Unknown";
-    const fileHTML=createFileMessageHTML(
-        data.fileData,data.fileName,data.fileSize,
-        data.mimeType,data.username,ip,time,data.username===currentUser,escapeHtml
-    );
-    let rawHtml=escapeHtml(data.username)+" ["+ip+"] ("+time+"):<br>"+fileHTML;
-    let li=document.createElement("li");
-    li.innerHTML=rawHtml;
-    if(data.username===currentUser){
-        li.classList.add("userMessage");
+const incomingFiles=new Map();
+export function handleBinaryChunk(arrayBuffer,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv){
+    if(arrayBuffer.byteLength<8)return;
+    const view=new DataView(arrayBuffer);
+    const tidLen=view.getUint32(0,false);
+    if(4+tidLen+4>arrayBuffer.byteLength)return;
+    let transferId="";
+    for(let i=0;i<tidLen;i++) transferId+=String.fromCharCode(view.getUint8(4+i));
+    const chunkIndex=view.getUint32(4+tidLen,false);
+    const dataStart=4+tidLen+4;
+    const chunkData=new Uint8Array(arrayBuffer.slice(dataStart));
+    if(!incomingFiles.has(transferId)){
+        if(!incomingFiles._pending) incomingFiles._pending=new Map();
+        if(!incomingFiles._pending.has(transferId)) incomingFiles._pending.set(transferId,[]);
+        incomingFiles._pending.get(transferId).push({index:chunkIndex,data:chunkData});
     }
     else{
-        li.classList.add("otherMessage");
+        const meta=incomingFiles.get(transferId);
+        if(!meta.chunks) meta.chunks=[];
+        meta.chunks[chunkIndex]=chunkData;
+        checkFileComplete(transferId,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv);
     }
+}
+export function handleFileStart(data,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv){
+    const meta={
+        transferId:data.transferId,
+        fileName:data.fileName,
+        fileSize:data.fileSize,
+        mimeType:data.mimeType,
+        username:data.username,
+        ip:data.ip,
+        timestamp:data.timestamp,
+        chunks:[],
+        totalChunks:data.totalChunks
+    };
+    incomingFiles.set(data.transferId,meta);
+    if(incomingFiles._pending&&incomingFiles._pending.has(data.transferId)){
+        const pending=incomingFiles._pending.get(data.transferId);
+        for(const p of pending){
+            meta.chunks[p.index]=p.data;
+        }
+        incomingFiles._pending.delete(data.transferId);
+        checkFileComplete(data.transferId,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv);
+    }
+}
+function checkFileComplete(transferId,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv){
+    const meta=incomingFiles.get(transferId);
+    if(!meta)return;
+    const received=meta.chunks.filter(Boolean).length;
+    if(received!==meta.totalChunks)return;
+    const ordered=[];
+    for(let i=0;i<meta.totalChunks;i++){
+        ordered.push(meta.chunks[i]);
+    }
+    const blob=new Blob(ordered,{type:meta.mimeType});
+    const url=URL.createObjectURL(blob);
+    const time=meta.timestamp||getCurrentTime();
+    const ip=meta.ip||"Unknown";
+    const fileHTML=createFileMessageHTML(url,meta.fileName,meta.fileSize,meta.mimeType,meta.username,ip,time,meta.username===currentUser,escapeHtml);
+    let rawHtml=escapeHtml(meta.username)+" ["+ip+"] ("+time+"):<br>"+fileHTML;
+    let li=document.createElement("li");
+    li.innerHTML=rawHtml;
+    if(meta.username===currentUser) li.classList.add("userMessage");
+    else li.classList.add("otherMessage");
     const fileDiv=li.querySelector(".file-message");
     if(fileDiv){
         fileDiv.addEventListener("click",(e)=>{
             e.stopPropagation();
-            const fileData=fileDiv.dataset.fileData;
-            const fileName=fileDiv.dataset.fileName;
-            if(fileData&&fileName){
-                downloadFile(fileData,fileName,data.mimeType,showChatError,chatErrorDiv);
-            }
+            const a=document.createElement("a");
+            a.href=url;
+            a.download=meta.fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         });
     }
     messagesList.appendChild(li);
     scrollToBottom(messagesList);
     checkScrollPosition(messagesList,scrollBtn,autoScroll);
+    incomingFiles.delete(transferId);
 }
+export function handleFileEnd(data){}
 export function initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml){
+    const onSendComplete=(url, fileName, fileSize, mimeType, time)=>{
+        const ip=clientRealIP||"Unknown";
+        const fileHTML=createFileMessageHTML(url, fileName, fileSize, mimeType, currentUser, ip, time, true, escapeHtml);
+        let rawHtml=escapeHtml(currentUser)+" ["+ip+"] ("+time+"):<br>"+fileHTML;
+        let li=document.createElement("li");
+        li.innerHTML=rawHtml;
+        li.classList.add("userMessage");
+        const fileDiv=li.querySelector(".file-message");
+        if(fileDiv){
+            fileDiv.addEventListener("click",(e)=>{
+                e.stopPropagation();
+                const a=document.createElement("a");
+                a.href=url;
+                a.download=fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+        }
+        messagesList.appendChild(li);
+        scrollToBottom(messagesList);
+        checkScrollPosition(messagesList,scrollBtn,autoScroll);
+    };
     document.getElementById("fileBtn").addEventListener("click",()=>{
         document.getElementById("fileInput").click();
     });
     document.getElementById("fileInput").addEventListener("change",(e)=>{
         if(e.target.files.length>0){
-            sendMultipleFiles(e.target.files,socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv);
+            sendMultipleFiles(e.target.files, socket, currentUser, clientRealIP, getCurrentTime, showChatError, chatErrorDiv, onSendComplete);
             e.target.value="";
         }
     });
@@ -242,7 +301,7 @@ export function initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,
         chatAreaDrop.style.opacity="1";
         const files=Array.from(e.dataTransfer.files);
         if(files.length>0){
-            await sendMultipleFiles(files,socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv);
+            await sendMultipleFiles(files, socket, currentUser, clientRealIP, getCurrentTime, showChatError, chatErrorDiv, onSendComplete);
         }
     });
 }

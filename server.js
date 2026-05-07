@@ -98,19 +98,27 @@ function broadcastSystemMessage(message,excludeWs=null){
 wsServer.on("connection",(ws,req)=>{
     clients.push(ws);
     broadcastOnlineCount();
-    console.log("New connection established"+". Number of client(s) "+clients.length);
+    console.log("New connection established. Clients: "+clients.length);
     let clientIP=req.headers["x-forwarded-for"]||req.socket.remoteAddress;
     if(clientIP&&clientIP.includes("::ffff:")){
         clientIP=clientIP.split("::ffff:")[1];
     }
     ws.clientIP=clientIP;
     ws.send(JSON.stringify({type:"system",message:`Your IP is ${clientIP}`}));
-    ws.on("message",(message)=>{
+    ws.on("message",(message,isBinary)=>{
+        if(isBinary){
+            clients.forEach(client=>{
+                if(client!==ws&&client.readyState===WebSocket.OPEN){
+                    client.send(message);
+                }
+            });
+            return;
+        }
         const data=JSON.parse(message);
         if(data.type=="join"){
             if(usernameToWs.has(data.username)){
-                ws.send(JSON.stringify({type:"system",message:`Username "${data.username}" is already taken. Please choose another name.`}));
-                ws.close(1008, "Username taken");
+                ws.send(JSON.stringify({type:"system",message:`Username "${data.username}" is already taken.`}));
+                ws.close(1008,"Username taken");
                 return;
             }
             ws.username=data.username;
@@ -139,66 +147,32 @@ wsServer.on("connection",(ws,req)=>{
             }
             return;
         }
-        else if(data.type=="image"){
-            const payload={
-                type:"image",
-                username:data.username,
-                image:data.image,
-                ip:ws.clientIP||"Unknown IP",
-                timestamp:data.timestamp
-            };
-            clients.forEach(client=>{
-                if(client.readyState===WebSocket.OPEN){
-                    client.send(JSON.stringify(payload));
-                }
-            });
-            return;
-        }
-        else if(data.type=="voice"){
-            const payload={
-                type:"voice",
-                username:data.username,
-                voice:data.voice,
-                ip:ws.clientIP||"Unknown IP",
-                timestamp:data.timestamp
-            };
-            clients.forEach(client=>{
-                if(client.readyState===WebSocket.OPEN){
-                    client.send(JSON.stringify(payload));
-                }
-            });
-            return;
-        }
         else if(data.type=="private"){
             if(!checkRateAndBan(data.username)){
-                ws.send(JSON.stringify({type:"system",message:"You are temporarily banned for sending too many messages. Please wait 5 seconds."}));
+                ws.send(JSON.stringify({type:"system",message:"You are temporarily banned for spamming."}));
                 return;
             }
             const targetWs=usernameToWs.get(data.target);
             if(!targetWs||targetWs.readyState!==WebSocket.OPEN){
-                if(ws.readyState===WebSocket.OPEN){
-                    ws.send(JSON.stringify({type:"system",message:`User "${data.target}" is not online.`}));
-                }
+                ws.send(JSON.stringify({type:"system",message:`User "${data.target}" is not online.`}));
                 return;
             }
             targetWs.send(JSON.stringify({
                 type:"private",
                 from:data.username,
                 message:data.message,
-                ip:ws.clientIP||"Unknown IP",
+                ip:ws.clientIP||"Unknown",
                 timestamp:data.timestamp
             }));
-            if(ws.readyState===WebSocket.OPEN){
-                ws.send(JSON.stringify({
-                    type:"private",
-                    from:data.username,
-                    message:data.message,
-                    ip:ws.clientIP||"Unknown IP",
-                    timestamp:data.timestamp,
-                    self:true,
-                    target:data.target
-                }));
-            }
+            ws.send(JSON.stringify({
+                type:"private",
+                self:true,
+                target:data.target,
+                from:data.username,
+                message:data.message,
+                ip:ws.clientIP||"Unknown",
+                timestamp:data.timestamp
+            }));
             return;
         }
         else if(data.type=="nick"){
@@ -217,28 +191,16 @@ wsServer.on("connection",(ws,req)=>{
             return;
         }
         else if(data.type=="ping"){
-            if(ws.readyState===WebSocket.OPEN){
-                ws.send(JSON.stringify({type:"pong", timestamp:data.timestamp}));
-            }
+            ws.send(JSON.stringify({type:"pong", timestamp:data.timestamp}));
             return;
         }
-        else if(data.type=="file"){
-            if(data.fileSize>500*1024*1024){
-                ws.send(JSON.stringify({
-                    type:"system",
-                    message:"File too large for server relay"
-                }));
-                return;
-            }
+        else if(data.type=="image"||data.type=="voice"||data.type=="file-start"||data.type=="file-end"||data.type=="file"){
+            const {type, ...rest}=data;
             const payload={
-                type:"file",
-                username:data.username,
-                fileName:data.fileName,
-                fileSize:data.fileSize,
-                mimeType:data.mimeType,
-                fileData:data.fileData,
-                ip:ws.clientIP||"Unknown IP",
-                timestamp:data.timestamp
+                type,
+                ...rest,
+                ip: ws.clientIP||"Unknown",
+                timestamp: data.timestamp||new Date().toISOString()
             };
             clients.forEach(client=>{
                 if(client.readyState===WebSocket.OPEN){
@@ -248,16 +210,16 @@ wsServer.on("connection",(ws,req)=>{
             return;
         }
         if(!checkRateAndBan(data.username)){
-            ws.send(JSON.stringify({type:"system",message:"You are temporarily banned for sending too many messages. Please wait 5 seconds."}));
+            ws.send(JSON.stringify({type:"system",message:"You are temporarily banned."}));
             return;
         }
         const broadcastMsg={
             username:data.username,
             message:data.message,
-            ip:ws.clientIP||"Unknown IP"
+            ip:ws.clientIP||"Unknown"
         };
         clients.forEach(client=>{
-            if(client.readyState==WebSocket.OPEN){
+            if(client.readyState===WebSocket.OPEN){
                 client.send(JSON.stringify(broadcastMsg));
             }
         });
@@ -269,10 +231,10 @@ wsServer.on("connection",(ws,req)=>{
             if(ws.username){
                 usernameToWs.delete(ws.username);
                 const userList=getCurrentUsersList();
-                broadcastSystemMessage(`${ws.username} left the chat. Current users: ${userList}`);
+                broadcastSystemMessage(`${ws.username} left. Current users: ${userList}`);
             }
             broadcastOnlineCount();
-            console.log(`Client disconnected. Remaining: ${clients.length}`);
+            console.log("Client disconnected. Remaining: "+clients.length);
         }
     });
 });
