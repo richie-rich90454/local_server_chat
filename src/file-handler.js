@@ -1,6 +1,7 @@
 export const MAX_FILE_SIZE=5*1024*1024*1024;
-export const CHUNK_SIZE=1024*1024;
+export const CHUNK_SIZE=16*1024*1024;
 export const ALLOWED_FILE_TYPES=[];
+const FILE_TRANSFER_TIMEOUT=300000;
 export function formatFileSize(bytes){
     if(bytes===0)return"0 Bytes";
     const k=1024;
@@ -187,7 +188,7 @@ export function handleFileStart(data,messagesList,scrollToBottom,checkScrollPosi
             if(pendingChunks.has(data.transferId)) pendingChunks.delete(data.transferId);
             transferTimeouts.delete(data.transferId);
         }
-    },60000);
+    },FILE_TRANSFER_TIMEOUT);
     transferTimeouts.set(data.transferId,timeoutId);
     if(data.username!==currentUser){
         const li=document.createElement("li");
@@ -368,6 +369,7 @@ export async function sendFileChunked(file, socket, currentUser, clientRealIP, g
         }));
         const startTime=Date.now();
         let bytesSent=0;
+        let nextChunk=await readChunk(file, 0, CHUNK_SIZE);
         for(let i=0;i<totalChunks;i++){
             if(abortController.signal.aborted){
                 socket.send(JSON.stringify({type:"file-cancel",transferId}));
@@ -375,10 +377,10 @@ export async function sendFileChunked(file, socket, currentUser, clientRealIP, g
                 activeTransfers.delete(transferId);
                 return false;
             }
-            const start=i*CHUNK_SIZE;
-            const end=Math.min(start+CHUNK_SIZE,file.size);
-            const slice=file.slice(start,end);
-            const arrayBuf=await slice.arrayBuffer();
+            const currentChunk=nextChunk;
+            const hasMore=i+1<totalChunks;
+            const nextPromise=hasMore ? readChunk(file, (i+1)*CHUNK_SIZE, CHUNK_SIZE) : null;
+            const arrayBuf=currentChunk;
             const tidLen=transferId.length;
             const headerLen=4+tidLen+4;
             const header=new ArrayBuffer(headerLen);
@@ -390,9 +392,6 @@ export async function sendFileChunked(file, socket, currentUser, clientRealIP, g
             combined.set(new Uint8Array(header),0);
             combined.set(new Uint8Array(arrayBuf),headerLen);
             socket.send(combined.buffer);
-            while(socket.bufferedAmount > 2 * CHUNK_SIZE){
-                await new Promise(r=>setTimeout(r,10));
-            }
             bytesSent+=arrayBuf.byteLength;
             const pct=Math.round(((i+1)/totalChunks)*100);
             const elapsed=(Date.now()-startTime)/1000;
@@ -401,7 +400,9 @@ export async function sendFileChunked(file, socket, currentUser, clientRealIP, g
             const remainingTime=remainingBytes>0?speed>0?remainingBytes/speed:0:0;
             const eta=remainingTime>0?`${Math.ceil(remainingTime)}s left`:"Done";
             updateUploadProgress(pct,speed,eta);
-            if(i%100===0) await new Promise(r=>setTimeout(r,0));
+            if(nextPromise){
+                nextChunk=await nextPromise;
+            }
         }
         socket.send(JSON.stringify({type:"file-end",transferId:transferId}));
         if(onSendComplete){
@@ -418,6 +419,16 @@ export async function sendFileChunked(file, socket, currentUser, clientRealIP, g
         showChatError(chatErrorDiv,"Failed to send file: "+err.message);
         return false;
     }
+}
+function readChunk(file, start, size){
+    return new Promise((resolve, reject)=>{
+        const end=Math.min(start+size, file.size);
+        const slice=file.slice(start, end);
+        const fr=new FileReader();
+        fr.onload=()=>resolve(fr.result);
+        fr.onerror=reject;
+        fr.readAsArrayBuffer(slice);
+    });
 }
 export async function sendMultipleFiles(files, socket, currentUser, clientRealIP, getCurrentTime, showChatError, chatErrorDiv, onSendComplete){
     const validFiles=Array.from(files).filter(file=>{

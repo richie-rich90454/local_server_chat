@@ -2,7 +2,7 @@ import {hljs, escapeHtml, formatMarkdown, highlightMentions} from "./highlight-c
 import {createModal, showChatError, shakeElement, getCurrentTime, scrollToBottom, checkScrollPosition, updateTypingIndicatorUI, wrapSelection, convertToWebP, insertReplyQuote, insertForwardToPrivate, exportChatLog, applyTheme, getSystemTheme, setHighlightTheme} from "./ui-helpers.js";
 import {connectWebSocket} from "./websocket.js";
 import {create2048Game, createChessGame, processCommand, updateDeveloperMode, applyGoldBorder, showSystemMessage, doRandomEasterEgg, getUnlockCount, incrementUnlockCount} from "./games.js";
-import {initFileHandlers, handleFileStart, handleBinaryChunk, handleFileEnd} from "./file-handler.js";
+import {initFileHandlers, handleFileStart, handleBinaryChunk, handleFileEnd, handleFileCancel} from "./file-handler.js";
 document.addEventListener("DOMContentLoaded",()=>{
     let headerControls=document.getElementById("headerControls");
     if(headerControls&&!document.getElementById("exportFormat")){
@@ -313,6 +313,10 @@ document.addEventListener("DOMContentLoaded",()=>{
         }
         if(data.type==="file-end"){
             handleFileEnd(data);
+            return;
+        }
+        if(data.type==="file-cancel"){
+            handleFileCancel(data.transferId);
             return;
         }
         if(data.type==="system"){

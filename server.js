@@ -51,12 +51,6 @@ app.post("/check-name",(req,res)=>{
 const wsServer=new WebSocketServer({
 	port:portWS,
 	host:"::",
-	perMessageDeflate:{
-		zlibDeflateOptions:{chunkSize:1024,memLevel:7,level:3},
-		zlibInflateOptions:{chunkSize:10*1024},
-		clientNoContextTakeover:true,
-		serverNoContextTakeover:true,
-	},
 	pingInterval:30000,
 	pingTimeout:10000,
     maxPayload: 5*1024*1024*1024,
