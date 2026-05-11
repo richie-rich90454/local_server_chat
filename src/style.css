@@ -805,3 +805,32 @@ body[data-theme="dark"] #chessBoard div{
 #fileBtn:hover{
 	background-color:var(--button-hover);
 }
+.upload-speed{
+	font-size:0.75rem;
+	color:var(--text-secondary);
+	margin-top:4px;
+}
+.cancel-upload-btn{
+	display:inline-flex;
+	align-items:center;
+	justify-content:center;
+	margin-top:8px;
+	padding:0.3rem 1rem;
+	height:2.2rem;
+	font-size:0.9rem;
+	background-color:var(--button-bg);
+	border:1px solid var(--border-card);
+	border-radius:0.3rem;
+	cursor:pointer;
+	color:var(--text-primary);
+	line-height:normal;
+	vertical-align:middle;
+	box-sizing:border-box;
+	transition:background-color 0.2s;
+}
+.cancel-upload-btn:hover{
+	background-color:var(--button-hover);
+}
+.cancel-upload-btn:active{
+	background-color:var(--button-active);
+}
