@@ -42,7 +42,16 @@ app.post("/check-name",(req,res)=>{
     const isClean=!filter.isProfane(name);
     res.json({clean:isClean});
 });
-const wsServer=new WebSocketServer({port:portWS,host:"::"});
+const wsServer=new WebSocketServer({
+    port: portWS,
+    host: "::",
+    perMessageDeflate: {
+        zlibDeflateOptions: {chunkSize: 1024, memLevel: 7, level: 3},
+        zlibInflateOptions: {chunkSize: 10 * 1024},
+        clientNoContextTakeover: true,
+        serverNoContextTakeover: true,
+    }
+});
 let clients=[];
 let usernameToWs=new Map();
 const rateLimitMap=new Map();

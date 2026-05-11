@@ -1,5 +1,5 @@
 export const MAX_FILE_SIZE=5*1024*1024*1024;
-export const CHUNK_SIZE=64*1024;
+export const CHUNK_SIZE=1024*1024;
 export const ALLOWED_FILE_TYPES=[];
 
 export function formatFileSize(bytes){
@@ -141,7 +141,7 @@ export async function sendFileChunked(file, socket, currentUser, clientRealIP, g
             socket.send(combined.buffer);
             const pct=Math.round(((i+1)/totalChunks)*100);
             updateUploadProgress(pct);
-            await new Promise(r=>setTimeout(r,0));
+            if (i%10===0) await new Promise(r=>setTimeout(r, 0));
         }
         socket.send(JSON.stringify({type:"file-end",transferId:transferId}));
         if(onSendComplete){
