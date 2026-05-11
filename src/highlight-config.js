@@ -100,6 +100,9 @@ export function formatMarkdown(text){
         catch(e){
             highlighted=escapeHtml(block.code);
         }
+        if(block.lang){
+            return `<div class="code-block-container"><span class="code-lang">${escapeHtml(block.lang)}</span><pre><code class="hljs">${highlighted}</code></pre></div>`;
+        }
         return `<pre><code class="hljs">${highlighted}</code></pre>`;
     });
     return escaped;
