@@ -130,13 +130,6 @@ function updateInlineProgress(bar,received,total,fileName){
 const incomingFiles=new Map();
 const pendingChunks=new Map();
 const transferTimeouts=new Map();
-let fileAssemblyWorker=null;
-function getFileAssemblyWorker(){
-    if(!fileAssemblyWorker){
-        fileAssemblyWorker=new Worker(new URL('./file-worker.js', import.meta.url),{type:'module'});
-    }
-    return fileAssemblyWorker;
-}
 export function handleBinaryChunk(arrayBuffer,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv){
     if(arrayBuffer.byteLength<8)return;
     const view=new DataView(arrayBuffer);
@@ -242,22 +235,16 @@ function checkFileComplete(transferId,messagesList,scrollToBottom,checkScrollPos
         clearTimeout(timeout);
         transferTimeouts.delete(transferId);
     }
-    const worker=getFileAssemblyWorker();
-    worker.postMessage({
-        chunks:meta.chunks,
-        totalChunks:meta.totalChunks,
-        mimeType:meta.mimeType,
-        fileName:meta.fileName,
-        fileSize:meta.fileSize,
-        username:meta.username,
-        ip:meta.ip,
-        timestamp:meta.timestamp,
-        currentUser
-    });
-    worker.onmessage=(e)=>{
-        const {url, fileName, fileSize, mimeType, username, ip, timestamp, isSender}=e.data;
-        const fileHTML=createFileMessageHTML(url, fileName, fileSize, mimeType, username, ip, timestamp, isSender, escapeHtml);
-        let rawHtml=escapeHtml(username)+" ["+ip+"] ("+timestamp+"):<br>"+fileHTML;
+    try{
+        const ordered=new Array(meta.totalChunks);
+        for(let i=0;i<meta.totalChunks;i++){
+            ordered[i]=meta.chunks[i];
+        }
+        const blob=new Blob(ordered,{type:meta.mimeType});
+        const url=URL.createObjectURL(blob);
+        const isSender=(meta.username===currentUser);
+        const fileHTML=createFileMessageHTML(url,meta.fileName,meta.fileSize,meta.mimeType,meta.username,meta.ip,meta.timestamp,isSender,escapeHtml);
+        let rawHtml=escapeHtml(meta.username)+" ["+(meta.ip||"Unknown")+"] ("+(meta.timestamp||getCurrentTime())+"):<br>"+fileHTML;
         if(meta.placeholderLi){
             meta.placeholderLi.innerHTML=rawHtml;
             meta.placeholderLi.classList.remove("file-placeholder");
@@ -273,11 +260,10 @@ function checkFileComplete(transferId,messagesList,scrollToBottom,checkScrollPos
                     e3.stopPropagation();
                     const a=document.createElement("a");
                     a.href=url;
-                    a.download=fileName;
+                    a.download=meta.fileName;
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
-                    setTimeout(()=>URL.revokeObjectURL(url),100);
                 });
                 const observer=new MutationObserver((mutations)=>{
                     mutations.forEach((mutation)=>{
@@ -304,11 +290,10 @@ function checkFileComplete(transferId,messagesList,scrollToBottom,checkScrollPos
                     e3.stopPropagation();
                     const a=document.createElement("a");
                     a.href=url;
-                    a.download=fileName;
+                    a.download=meta.fileName;
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
-                    setTimeout(()=>URL.revokeObjectURL(url),100);
                 });
                 const observer=new MutationObserver((mutations)=>{
                     mutations.forEach((mutation)=>{
@@ -327,8 +312,13 @@ function checkFileComplete(transferId,messagesList,scrollToBottom,checkScrollPos
         }
         scrollToBottom(messagesList);
         checkScrollPosition(messagesList,scrollBtn,autoScroll);
-        incomingFiles.delete(transferId);
-    };
+    }
+    catch(err){
+        console.error("File assembly error:",err);
+        showChatError(chatErrorDiv,"Failed to assemble received file.");
+        if(meta.placeholderLi) meta.placeholderLi.remove();
+    }
+    incomingFiles.delete(transferId);
 }
 export function handleFileEnd(data){}
 export const activeTransfers=new Map();
@@ -464,7 +454,6 @@ export function initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                setTimeout(()=>URL.revokeObjectURL(url),100);
             });
         }
         messagesList.appendChild(li);
