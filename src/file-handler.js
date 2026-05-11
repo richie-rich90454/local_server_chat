@@ -142,6 +142,8 @@ export function handleBinaryChunk(arrayBuffer,messagesList,scrollToBottom,checkS
     const chunkData=new Uint8Array(arrayBuffer.slice(dataStart));
     if(incomingFiles.has(transferId)){
         const meta=incomingFiles.get(transferId);
+        // Ignore any chunk if the file is already being / has been assembled
+        if(meta.completed) return;
         if(!meta.chunks) meta.chunks=[];
         const wasEmpty=!meta.chunks[chunkIndex];
         meta.chunks[chunkIndex]=chunkData;
@@ -168,13 +170,14 @@ export function handleFileStart(data,messagesList,scrollToBottom,checkScrollPosi
         chunks:[],
         totalChunks:data.totalChunks,
         placeholderLi:null,
-        placeholderBar:null
+        placeholderBar:null,
+        completed:false
     };
     incomingFiles.set(data.transferId,meta);
     const timeoutId=setTimeout(()=>{
         if(incomingFiles.has(data.transferId)){
             const meta2=incomingFiles.get(data.transferId);
-            if(meta2.placeholderLi){
+            if(meta2.placeholderLi&&!meta2.completed){
                 meta2.placeholderLi.remove();
             }
             incomingFiles.delete(data.transferId);
@@ -213,7 +216,7 @@ export function handleFileStart(data,messagesList,scrollToBottom,checkScrollPosi
 export function handleFileCancel(transferId){
     if(incomingFiles.has(transferId)){
         const meta=incomingFiles.get(transferId);
-        if(meta.placeholderLi){
+        if(meta.placeholderLi&&!meta.completed){
             meta.placeholderLi.remove();
         }
         incomingFiles.delete(transferId);
@@ -228,8 +231,10 @@ export function handleFileCancel(transferId){
 function checkFileComplete(transferId,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv){
     const meta=incomingFiles.get(transferId);
     if(!meta)return;
+    if(meta.completed) return;
     const received=meta.chunks.filter(Boolean).length;
     if(received!==meta.totalChunks)return;
+    meta.completed=true;
     const timeout=transferTimeouts.get(transferId);
     if(timeout){
         clearTimeout(timeout);
