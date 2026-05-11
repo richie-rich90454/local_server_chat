@@ -59,6 +59,7 @@ const wsServer=new WebSocketServer({
 	},
 	pingInterval:30000,
 	pingTimeout:10000,
+    maxPayload: 5*1024*1024*1024,
 });
 let clients=[];
 let usernameToWs=new Map();

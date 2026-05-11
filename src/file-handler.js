@@ -66,7 +66,6 @@ export function createFileMessageHTML(fileData,fileName,fileSize,mimeType,userna
         </div>
     `;
 }
-/* ---------- Upload progress (unchanged) ---------- */
 export function showUploadProgress(filename,transferId,cancelCallback){
     let progressDiv=document.getElementById("uploadProgress");
     if(!progressDiv){
@@ -110,50 +109,228 @@ export function hideUploadProgress(){
         },300);
     }
 }
-/* ---------- Download progress (new) ---------- */
-const activeDownloads=new Map(); // transferId -> { fileName, totalChunks, progressDiv }
-function showDownloadProgress(transferId,fileName,totalChunks,cancelCallback){
-    let div=document.getElementById("downloadProgress");
-    if(!div){
-        div=document.createElement("div");
-        div.id="downloadProgress";
-        div.className="upload-progress download-progress hidden";
-        div.innerHTML=`
-            <div class="upload-filename download-filename"></div>
-            <div class="progress-bar"><div class="progress-fill"></div></div>
-            <div class="upload-speed download-speed"></div>
-            <button class="cancel-upload-btn cancel-download-btn">Cancel</button>
-        `;
-        document.body.appendChild(div);
-        div.querySelector(".cancel-download-btn").addEventListener("click",()=>{
-            if(cancelCallback)cancelCallback();
-        });
-    }
-    div.querySelector(".download-filename").textContent="Downloading: "+fileName;
-    div.querySelector(".progress-fill").style.width="0%";
-    div.querySelector(".download-speed").textContent="";
-    div.classList.remove("hidden");
-    activeDownloads.set(transferId,{fileName,totalChunks,progressDiv:div});
+function createInlineProgressBar(){
+    const bar=document.createElement("div");
+    bar.className="inline-file-progress";
+    bar.innerHTML=`
+        <div class="inline-file-name"></div>
+        <div class="progress-bar"><div class="progress-fill"></div></div>
+        <div class="inline-file-status">0%</div>
+    `;
+    return bar;
 }
-function updateDownloadProgress(transferId,received,total){
-    const entry=activeDownloads.get(transferId);
-    if(!entry)return;
+function updateInlineProgress(bar,received,total,fileName){
+    if(!bar)return;
     const pct=Math.round((received/total)*100);
-    entry.progressDiv.querySelector(".progress-fill").style.width=pct+"%";
+    bar.querySelector(".progress-fill").style.width=pct+"%";
+    bar.querySelector(".inline-file-status").textContent=pct+"%";
+    bar.querySelector(".inline-file-name").textContent=fileName;
 }
-function hideDownloadProgress(transferId){
-    const entry=activeDownloads.get(transferId);
-    if(entry){
-        entry.progressDiv.classList.add("hidden");
-        setTimeout(()=>{
-            entry.progressDiv.querySelector(".progress-fill").style.width="0%";
-            entry.progressDiv.querySelector(".download-speed").textContent="";
-        },300);
-        activeDownloads.delete(transferId);
+const incomingFiles=new Map();
+const pendingChunks=new Map();
+const transferTimeouts=new Map();
+let fileAssemblyWorker=null;
+function getFileAssemblyWorker(){
+    if(!fileAssemblyWorker){
+        fileAssemblyWorker=new Worker(new URL('./file-worker.js', import.meta.url),{type:'module'});
+    }
+    return fileAssemblyWorker;
+}
+export function handleBinaryChunk(arrayBuffer,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv){
+    if(arrayBuffer.byteLength<8)return;
+    const view=new DataView(arrayBuffer);
+    const tidLen=view.getUint32(0,false);
+    if(4+tidLen+4>arrayBuffer.byteLength)return;
+    let transferId="";
+    for(let i=0;i<tidLen;i++) transferId+=String.fromCharCode(view.getUint8(4+i));
+    const chunkIndex=view.getUint32(4+tidLen,false);
+    const dataStart=4+tidLen+4;
+    const chunkData=new Uint8Array(arrayBuffer.slice(dataStart));
+    if(incomingFiles.has(transferId)){
+        const meta=incomingFiles.get(transferId);
+        if(!meta.chunks) meta.chunks=[];
+        const wasEmpty=!meta.chunks[chunkIndex];
+        meta.chunks[chunkIndex]=chunkData;
+        if(wasEmpty&&meta.placeholderBar){
+            const received=meta.chunks.filter(Boolean).length;
+            updateInlineProgress(meta.placeholderBar,received,meta.totalChunks,meta.fileName);
+        }
+        checkFileComplete(transferId,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv);
+    }
+    else{
+        if(!pendingChunks.has(transferId)) pendingChunks.set(transferId,[]);
+        pendingChunks.get(transferId).push({index:chunkIndex,data:chunkData});
     }
 }
-/* ---------- File transfer core ---------- */
-const activeTransfers=new Map();
+export function handleFileStart(data,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv){
+    const meta={
+        transferId:data.transferId,
+        fileName:data.fileName,
+        fileSize:data.fileSize,
+        mimeType:data.mimeType,
+        username:data.username,
+        ip:data.ip,
+        timestamp:data.timestamp,
+        chunks:[],
+        totalChunks:data.totalChunks,
+        placeholderLi:null,
+        placeholderBar:null
+    };
+    incomingFiles.set(data.transferId,meta);
+    const timeoutId=setTimeout(()=>{
+        if(incomingFiles.has(data.transferId)){
+            const meta2=incomingFiles.get(data.transferId);
+            if(meta2.placeholderLi){
+                meta2.placeholderLi.remove();
+            }
+            incomingFiles.delete(data.transferId);
+            if(pendingChunks.has(data.transferId)) pendingChunks.delete(data.transferId);
+            transferTimeouts.delete(data.transferId);
+        }
+    },60000);
+    transferTimeouts.set(data.transferId,timeoutId);
+    if(data.username!==currentUser){
+        const li=document.createElement("li");
+        li.className="otherMessage file-placeholder";
+        const header=escapeHtml(data.username)+" ["+(data.ip||"Unknown")+"] ("+(data.timestamp||getCurrentTime())+"):<br>";
+        const bar=createInlineProgressBar();
+        updateInlineProgress(bar,0,data.totalChunks,data.fileName);
+        li.innerHTML=header;
+        li.appendChild(bar);
+        messagesList.appendChild(li);
+        scrollToBottom(messagesList);
+        checkScrollPosition(messagesList,scrollBtn,autoScroll);
+        meta.placeholderLi=li;
+        meta.placeholderBar=bar;
+    }
+    if(pendingChunks.has(data.transferId)){
+        const pending=pendingChunks.get(data.transferId);
+        for(const p of pending){
+            meta.chunks[p.index]=p.data;
+        }
+        pendingChunks.delete(data.transferId);
+        const received=meta.chunks.filter(Boolean).length;
+        if(meta.placeholderBar){
+            updateInlineProgress(meta.placeholderBar,received,meta.totalChunks,meta.fileName);
+        }
+        checkFileComplete(data.transferId,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv);
+    }
+}
+export function handleFileCancel(transferId){
+    if(incomingFiles.has(transferId)){
+        const meta=incomingFiles.get(transferId);
+        if(meta.placeholderLi){
+            meta.placeholderLi.remove();
+        }
+        incomingFiles.delete(transferId);
+        if(pendingChunks.has(transferId)) pendingChunks.delete(transferId);
+        const timeout=transferTimeouts.get(transferId);
+        if(timeout){
+            clearTimeout(timeout);
+            transferTimeouts.delete(transferId);
+        }
+    }
+}
+function checkFileComplete(transferId,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv){
+    const meta=incomingFiles.get(transferId);
+    if(!meta)return;
+    const received=meta.chunks.filter(Boolean).length;
+    if(received!==meta.totalChunks)return;
+    const timeout=transferTimeouts.get(transferId);
+    if(timeout){
+        clearTimeout(timeout);
+        transferTimeouts.delete(transferId);
+    }
+    const worker=getFileAssemblyWorker();
+    worker.postMessage({
+        chunks:meta.chunks,
+        totalChunks:meta.totalChunks,
+        mimeType:meta.mimeType,
+        fileName:meta.fileName,
+        fileSize:meta.fileSize,
+        username:meta.username,
+        ip:meta.ip,
+        timestamp:meta.timestamp,
+        currentUser
+    });
+    worker.onmessage=(e)=>{
+        const {url, fileName, fileSize, mimeType, username, ip, timestamp, isSender}=e.data;
+        const fileHTML=createFileMessageHTML(url, fileName, fileSize, mimeType, username, ip, timestamp, isSender, escapeHtml);
+        let rawHtml=escapeHtml(username)+" ["+ip+"] ("+timestamp+"):<br>"+fileHTML;
+        if(meta.placeholderLi){
+            meta.placeholderLi.innerHTML=rawHtml;
+            meta.placeholderLi.classList.remove("file-placeholder");
+            if(isSender){
+                meta.placeholderLi.classList.add("userMessage");
+            }
+            else{
+                meta.placeholderLi.classList.add("otherMessage");
+            }
+            const fileDiv=meta.placeholderLi.querySelector(".file-message");
+            if(fileDiv){
+                fileDiv.addEventListener("click",(e3)=>{
+                    e3.stopPropagation();
+                    const a=document.createElement("a");
+                    a.href=url;
+                    a.download=fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(()=>URL.revokeObjectURL(url),100);
+                });
+                const observer=new MutationObserver((mutations)=>{
+                    mutations.forEach((mutation)=>{
+                        if(mutation.removedNodes.length>0){
+                            const removed=Array.from(mutation.removedNodes);
+                            if(removed.includes(meta.placeholderLi)||removed.includes(fileDiv)){
+                                URL.revokeObjectURL(url);
+                                observer.disconnect();
+                            }
+                        }
+                    });
+                });
+                observer.observe(messagesList,{childList:true, subtree:true});
+            }
+        }
+        else{
+            let li=document.createElement("li");
+            li.innerHTML=rawHtml;
+            if(isSender) li.classList.add("userMessage");
+            else li.classList.add("otherMessage");
+            const fileDiv=li.querySelector(".file-message");
+            if(fileDiv){
+                fileDiv.addEventListener("click",(e3)=>{
+                    e3.stopPropagation();
+                    const a=document.createElement("a");
+                    a.href=url;
+                    a.download=fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(()=>URL.revokeObjectURL(url),100);
+                });
+                const observer=new MutationObserver((mutations)=>{
+                    mutations.forEach((mutation)=>{
+                        if(mutation.removedNodes.length>0){
+                            const removed=Array.from(mutation.removedNodes);
+                            if(removed.includes(li)||removed.includes(fileDiv)){
+                                URL.revokeObjectURL(url);
+                                observer.disconnect();
+                            }
+                        }
+                    });
+                });
+                observer.observe(messagesList,{childList:true, subtree:true});
+            }
+            messagesList.appendChild(li);
+        }
+        scrollToBottom(messagesList);
+        checkScrollPosition(messagesList,scrollBtn,autoScroll);
+        incomingFiles.delete(transferId);
+    };
+}
+export function handleFileEnd(data){}
+export const activeTransfers=new Map();
 export function cancelFileTransfer(transferId){
     const ctrl=activeTransfers.get(transferId);
     if(ctrl){
@@ -213,6 +390,9 @@ export async function sendFileChunked(file, socket, currentUser, clientRealIP, g
             combined.set(new Uint8Array(header),0);
             combined.set(new Uint8Array(arrayBuf),headerLen);
             socket.send(combined.buffer);
+            while(socket.bufferedAmount > 2 * CHUNK_SIZE){
+                await new Promise(r=>setTimeout(r,10));
+            }
             bytesSent+=arrayBuf.byteLength;
             const pct=Math.round(((i+1)/totalChunks)*100);
             const elapsed=(Date.now()-startTime)/1000;
@@ -221,7 +401,7 @@ export async function sendFileChunked(file, socket, currentUser, clientRealIP, g
             const remainingTime=remainingBytes>0?speed>0?remainingBytes/speed:0:0;
             const eta=remainingTime>0?`${Math.ceil(remainingTime)}s left`:"Done";
             updateUploadProgress(pct,speed,eta);
-            if(i%10===0) await new Promise(r=>setTimeout(r,0));
+            if(i%100===0) await new Promise(r=>setTimeout(r,0));
         }
         socket.send(JSON.stringify({type:"file-end",transferId:transferId}));
         if(onSendComplete){
@@ -255,159 +435,6 @@ export async function sendMultipleFiles(files, socket, currentUser, clientRealIP
     }
     showChatError(chatErrorDiv,"Sent "+validFiles.length+" file(s)");
 }
-const incomingFiles=new Map();
-const pendingChunks=new Map();
-const transferTimeouts=new Map();
-let fileAssemblyWorker=null;
-function getFileAssemblyWorker(){
-    if(!fileAssemblyWorker){
-        fileAssemblyWorker=new Worker(new URL('./file-worker.js', import.meta.url),{type:'module'});
-    }
-    return fileAssemblyWorker;
-}
-export function handleBinaryChunk(arrayBuffer,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv){
-    if(arrayBuffer.byteLength<8)return;
-    const view=new DataView(arrayBuffer);
-    const tidLen=view.getUint32(0,false);
-    if(4+tidLen+4>arrayBuffer.byteLength)return;
-    let transferId="";
-    for(let i=0;i<tidLen;i++) transferId+=String.fromCharCode(view.getUint8(4+i));
-    const chunkIndex=view.getUint32(4+tidLen,false);
-    const dataStart=4+tidLen+4;
-    const chunkData=new Uint8Array(arrayBuffer.slice(dataStart));
-    if(incomingFiles.has(transferId)){
-        const meta=incomingFiles.get(transferId);
-        if(!meta.chunks) meta.chunks=[];
-        const wasEmpty=!meta.chunks[chunkIndex];
-        meta.chunks[chunkIndex]=chunkData;
-        if(wasEmpty){
-            const received=meta.chunks.filter(Boolean).length;
-            updateDownloadProgress(transferId,received,meta.totalChunks);
-        }
-        checkFileComplete(transferId,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv);
-    }
-    else{
-        if(!pendingChunks.has(transferId)) pendingChunks.set(transferId,[]);
-        pendingChunks.get(transferId).push({index:chunkIndex,data:chunkData});
-    }
-}
-export function handleFileStart(data,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv){
-    const meta={
-        transferId:data.transferId,
-        fileName:data.fileName,
-        fileSize:data.fileSize,
-        mimeType:data.mimeType,
-        username:data.username,
-        ip:data.ip,
-        timestamp:data.timestamp,
-        chunks:[],
-        totalChunks:data.totalChunks
-    };
-    incomingFiles.set(data.transferId,meta);
-    const timeoutId=setTimeout(()=>{
-        if(incomingFiles.has(data.transferId)){
-            incomingFiles.delete(data.transferId);
-            if(pendingChunks.has(data.transferId)) pendingChunks.delete(data.transferId);
-            transferTimeouts.delete(data.transferId);
-            hideDownloadProgress(data.transferId);
-        }
-    },30000);
-    transferTimeouts.set(data.transferId,timeoutId);
-    // Show download progress if not the sender
-    if(data.username!==currentUser){
-        showDownloadProgress(data.transferId,data.fileName,data.totalChunks,()=>{
-            if(socket&&socket.readyState===WebSocket.OPEN){
-                socket.send(JSON.stringify({type:"file-cancel",transferId:data.transferId}));
-            }
-            handleFileCancel(data.transferId);
-        });
-    }
-    if(pendingChunks.has(data.transferId)){
-        const pending=pendingChunks.get(data.transferId);
-        for(const p of pending){
-            meta.chunks[p.index]=p.data;
-        }
-        pendingChunks.delete(data.transferId);
-        const received=meta.chunks.filter(Boolean).length;
-        updateDownloadProgress(data.transferId,received,meta.totalChunks);
-        checkFileComplete(data.transferId,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv);
-    }
-}
-export function handleFileCancel(transferId){
-    if(incomingFiles.has(transferId)){
-        incomingFiles.delete(transferId);
-        if(pendingChunks.has(transferId)) pendingChunks.delete(transferId);
-        const timeout=transferTimeouts.get(transferId);
-        if(timeout){
-            clearTimeout(timeout);
-            transferTimeouts.delete(transferId);
-        }
-        hideDownloadProgress(transferId);
-    }
-}
-function checkFileComplete(transferId,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv){
-    const meta=incomingFiles.get(transferId);
-    if(!meta)return;
-    const received=meta.chunks.filter(Boolean).length;
-    if(received!==meta.totalChunks)return;
-    const timeout=transferTimeouts.get(transferId);
-    if(timeout){
-        clearTimeout(timeout);
-        transferTimeouts.delete(transferId);
-    }
-    hideDownloadProgress(transferId);
-    const worker=getFileAssemblyWorker();
-    worker.postMessage({
-        chunks:meta.chunks,
-        totalChunks:meta.totalChunks,
-        mimeType:meta.mimeType,
-        fileName:meta.fileName,
-        fileSize:meta.fileSize,
-        username:meta.username,
-        ip:meta.ip,
-        timestamp:meta.timestamp,
-        currentUser
-    });
-    worker.onmessage=(e)=>{
-        const {url, fileName, fileSize, mimeType, username, ip, timestamp, isSender}=e.data;
-        const fileHTML=createFileMessageHTML(url, fileName, fileSize, mimeType, username, ip, timestamp, isSender, escapeHtml);
-        let rawHtml=escapeHtml(username)+" ["+ip+"] ("+timestamp+"):<br>"+fileHTML;
-        let li=document.createElement("li");
-        li.innerHTML=rawHtml;
-        if(isSender) li.classList.add("userMessage");
-        else li.classList.add("otherMessage");
-        const fileDiv=li.querySelector(".file-message");
-        if(fileDiv){
-            fileDiv.addEventListener("click",(e)=>{
-                e.stopPropagation();
-                const a=document.createElement("a");
-                a.href=url;
-                a.download=fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setTimeout(()=>URL.revokeObjectURL(url),100);
-            });
-            const observer=new MutationObserver((mutations)=>{
-                mutations.forEach((mutation)=>{
-                    if(mutation.removedNodes.length>0){
-                        const removed=Array.from(mutation.removedNodes);
-                        if(removed.includes(li)||removed.includes(fileDiv)){
-                            URL.revokeObjectURL(url);
-                            observer.disconnect();
-                        }
-                    }
-                });
-            });
-            observer.observe(messagesList,{childList:true, subtree:true});
-        }
-        messagesList.appendChild(li);
-        scrollToBottom(messagesList);
-        checkScrollPosition(messagesList,scrollBtn,autoScroll);
-        incomingFiles.delete(transferId);
-    };
-}
-export function handleFileEnd(data){}
 export function initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml){
     const onSendComplete=(url, fileName, fileSize, mimeType, time)=>{
         const ip=clientRealIP||"Unknown";
