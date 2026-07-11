@@ -4,14 +4,14 @@
     "type": "module",
     "dependencies": {
         "bad-words": "^4.0.0",
-        "chess.js": "^0.10.3",
+        "chess.js": "^1.0.0",
         "express": "^5.2.1",
         "gchessboard": "^1.4.0",
         "highlight.js": "^11.11.1",
         "highlightjs-cobol": "^0.3.3",
         "highlightjs-graphql": "^1.0.2",
         "highlightjs-zig": "^1.0.2",
-        "ws": "^8.20.0"
+        "ws": "^8.21.0"
     },
     "main": "server.js",
     "scripts": {
@@ -29,7 +29,7 @@
     "license": "Apache-2.0",
     "description": "It should just be a chat app.",
     "devDependencies": {
-        "vite": "^8.0.10",
+        "vite": "^8.1.4",
         "vite-plugin-html": "^3.2.2"
     }
 }
