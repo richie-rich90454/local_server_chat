@@ -160,7 +160,7 @@ export function handleBinaryChunk(arrayBuffer,messagesList,scrollToBottom,checkS
     }
 }
 export function handleFileStart(data,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv){
-    if(data.username===currentUser)return;
+    if(data.username===currentUser&&incomingFiles.has(data.transferId))return;
     const meta={
         transferId:data.transferId,
         fileName:data.fileName,
@@ -333,6 +333,14 @@ export function handleFileEnd(data){
     if(!meta||meta.completed)return;
     if(meta._deps){
         checkFileComplete(data.transferId,meta._deps.messagesList,meta._deps.scrollToBottom,meta._deps.checkScrollPosition,meta._deps.scrollBtn,meta._deps.autoScroll,meta._deps.escapeHtml,meta._deps.getCurrentTime,meta._deps.currentUser,meta._deps.showChatError,meta._deps.chatErrorDiv);
+    }
+    else{
+        for(const[pendingMeta]of incomingFiles){
+            if(pendingMeta.transferId===data.transferId&&pendingMeta._deps){
+                checkFileComplete(data.transferId,pendingMeta._deps.messagesList,pendingMeta._deps.scrollToBottom,pendingMeta._deps.checkScrollPosition,pendingMeta._deps.scrollBtn,pendingMeta._deps.autoScroll,pendingMeta._deps.escapeHtml,pendingMeta._deps.getCurrentTime,pendingMeta._deps.currentUser,pendingMeta._deps.showChatError,pendingMeta._deps.chatErrorDiv);
+                break;
+            }
+        }
     }
 }
 export const activeTransfers=new Map();
