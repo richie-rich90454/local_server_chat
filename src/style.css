@@ -143,10 +143,12 @@ li:last-child{
 .userMessage{
     color:var(--message-user);
     text-align:right;
+    justify-content:flex-end;
 }
 .otherMessage{
     color:var(--message-other);
     text-align:left;
+    justify-content:flex-start;
 }
 .privateMessage{
     color:var(--message-private);

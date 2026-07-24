@@ -481,6 +481,9 @@ document.addEventListener("DOMContentLoaded",()=>{
             let rawHtml=identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${imgHtml}`;
             let li=document.createElement("li");
             li.innerHTML=rawHtml;
+            li.style.display="flex";
+            li.style.alignItems="flex-start";
+            li.style.gap="0.3rem";
             if(data.username===currentUser){li.classList.add("userMessage");}
             else{li.classList.add("otherMessage");}
             messagesList.appendChild(li);
@@ -497,6 +500,9 @@ document.addEventListener("DOMContentLoaded",()=>{
             let rawHtml=identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${audioHtml}`;
             let li=document.createElement("li");
             li.innerHTML=rawHtml;
+            li.style.display="flex";
+            li.style.alignItems="flex-start";
+            li.style.gap="0.3rem";
             if(data.username===currentUser){li.classList.add("userMessage");}
             else{li.classList.add("otherMessage");}
             messagesList.appendChild(li);
