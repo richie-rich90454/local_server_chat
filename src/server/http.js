@@ -5,7 +5,7 @@ import{PROTOCOL_VERSION}from"../protocol/constants.js";
 function getDistDir(){
 	let scriptDir=path.dirname(process.argv[1]||".");
 	if(path.basename(process.argv[0]||"")==="node"||path.basename(process.argv[0]||"")==="node.exe"){
-		return path.join(scriptDir,"../../dist");
+		return path.join(scriptDir,"dist");
 	}
 	return path.join(path.dirname(process.execPath),"dist");
 }
