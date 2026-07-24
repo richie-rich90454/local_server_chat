@@ -3,7 +3,7 @@
     "version": "2.0.0",
     "type": "module",
     "dependencies": {
-        "bad-words": "^4.1.1",
+        "bad-words": "^4.1.5",
         "chess.js": "^1.0.0",
         "express": "^5.2.1",
         "gchessboard": "^1.4.0",
@@ -19,7 +19,14 @@
         "test": "echo \"Error: no test specified\" && exit 1",
         "start": "node server.js",
         "dev": "vite dev",
-        "build": "vite build"
+        "build": "vite build",
+        "package": "vite build && pkg . --targets node18-win-x64,node18-linux-x64,node18-macos-x64 --output LocalServerChat"
+    },
+    "pkg": {
+        "assets": [
+            "dist/**/*"
+        ],
+        "outputPath": "release"
     },
     "keywords": [
         "WebSocket",
@@ -30,6 +37,7 @@
     "license": "Apache-2.0",
     "description": "It should just be a chat app.",
     "devDependencies": {
+        "pkg": "^5.8.1",
         "vite": "^8.1.5",
         "vite-plugin-html": "^3.2.2"
     }
