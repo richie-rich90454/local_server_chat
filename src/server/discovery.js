@@ -8,7 +8,12 @@ export function createDiscoverySocket(name,localIP,wsPort,joinCode,getStats){
 	}
 	socket.bind(DISCOVERY_PORT);
 	socket.on("listening",()=>{
-		socket.addMembership(DISCOVERY_ADDRESS);
+		try{
+			socket.addMembership(DISCOVERY_ADDRESS);
+		}
+		catch(e){
+			console.log("Multicast not available: "+e.message+". Discovery will use broadcast only.");
+		}
 		socket.setBroadcast(true);
 		console.log(`LAN discovery active on ${DISCOVERY_ADDRESS}:${DISCOVERY_PORT}`);
 	});
