@@ -138,5 +138,7 @@ dist
 docs
 server-bundle.js
 server-bundle.cjs
+client-bundle.cjs
 sea-prep.blob
+client-sea-prep.blob
 release/
