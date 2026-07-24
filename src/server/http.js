@@ -2,6 +2,7 @@ import express from"express";
 import path from"path";
 import{fileURLToPath}from"url";
 import{Filter}from"bad-words";
+import{PROTOCOL_VERSION}from"../protocol/constants.js";
 const __filename=fileURLToPath(import.meta.url);
 const __dirname=path.dirname(__filename);
 export function createHttpServer(localIP,portUI,portWS,serverName,joinCode,joinCodeMap){
@@ -30,7 +31,8 @@ export function createHttpServer(localIP,portUI,portWS,serverName,joinCode,joinC
 			port:portWS,
 			ip:localIP,
 			joinCode:joinCode,
-			uiPort:portUI
+			uiPort:portUI,
+			protocol:PROTOCOL_VERSION
 		});
 	});
 	app.get("/join-code/:code",(req,res)=>{
