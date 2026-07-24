@@ -235,5 +235,5 @@ export function createWebSocketServer(portWS,localIP){
 			}
 		});
 	});
-	return wsServer;
+	return{server:wsServer,getStats:()=>({users:clients.length,rooms:rooms.size})};
 }

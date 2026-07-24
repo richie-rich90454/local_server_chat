@@ -1,8 +1,11 @@
-import dgram from "dgram";
+import dgram from"dgram";
 import{DISCOVERY_ADDRESS,DISCOVERY_PORT,DISCOVERY_INTERVAL,DISCOVERY_TYPE,PROTOCOL_VERSION}from"../protocol/constants.js";
-export function createDiscoverySocket(name,localIP,wsPort,joinCode){
+export function createDiscoverySocket(name,localIP,wsPort,joinCode,getStats){
 	const socket=dgram.createSocket({type:"udp4",reuseAddr:true});
-	const packet=JSON.stringify({type:DISCOVERY_TYPE,name,ip:localIP,port:wsPort,version:PROTOCOL_VERSION,joinCode});
+	function buildPacket(){
+		let stats=getStats?getStats():{users:0,rooms:0};
+		return JSON.stringify({type:DISCOVERY_TYPE,name,ip:localIP,port:wsPort,version:PROTOCOL_VERSION,joinCode,users:stats.users,rooms:stats.rooms});
+	}
 	socket.bind(DISCOVERY_PORT);
 	socket.on("listening",()=>{
 		socket.addMembership(DISCOVERY_ADDRESS);
@@ -13,7 +16,7 @@ export function createDiscoverySocket(name,localIP,wsPort,joinCode){
 		console.log("Discovery socket error: "+err.message);
 	});
 	const broadcast=()=>{
-		const msg=Buffer.from(packet);
+		const msg=Buffer.from(buildPacket());
 		socket.send(msg,0,msg.length,DISCOVERY_PORT,DISCOVERY_ADDRESS);
 	};
 	broadcast();

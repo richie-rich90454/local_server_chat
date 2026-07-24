@@ -34,14 +34,14 @@ setInterval(()=>{
 	}
 	joinCodeMap.set(joinCode,{ip:localIP,port:WS_PORT,uiPort:UI_PORT,name:serverName});
 },300000);
+const{server:wsServer,getStats}=createWebSocketServer(WS_PORT,localIP);
 let discoverySocket=null;
 if(serverName){
-	discoverySocket=createDiscoverySocket(serverName,localIP,WS_PORT,joinCode);
+	discoverySocket=createDiscoverySocket(serverName,localIP,WS_PORT,joinCode,getStats);
 }
 if(!noHttp){
 	createHttpServer(localIP,UI_PORT,WS_PORT,serverName,joinCode,joinCodeMap);
 }
-const wsServer=createWebSocketServer(WS_PORT,localIP);
 console.log(`WebSocket server on ws://${localIP}:${WS_PORT}`+(serverName?` "${serverName}"`:""));
 console.log(`Join code: ${joinCode}`);
 function shutdown(){
