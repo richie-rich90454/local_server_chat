@@ -51,6 +51,51 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(onlineSpan&&onlineSpan.parentNode){
         onlineSpan.parentNode.appendChild(timeSpan);
     }
+    let currentRoom="General";
+    let roomSelector=null;
+    function createRoomUI(){
+        let headerControls=document.getElementById("headerControls");
+        if(!headerControls)return;
+        roomSelector=document.createElement("select");
+        roomSelector.id="roomSelector";
+        roomSelector.style.cssText="background-color:var(--button-bg);color:var(--text-primary);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:0 .6rem;height:var(--button-height);font-size:var(--button-font-size);cursor:pointer;";
+        roomSelector.onchange=()=>{
+            let room=roomSelector.value;
+            if(room&&room!==currentRoom){
+                if(socket&&socket.readyState===WebSocket.OPEN){
+                    socket.send(JSON.stringify({type:"joinRoom",room:room}));
+                }
+            }
+        };
+        headerControls.insertBefore(roomSelector,headerControls.firstChild);
+        let createBtn=document.createElement("button");
+        createBtn.textContent="+";
+        createBtn.title="Create room";
+        createBtn.style.cssText="height:var(--button-height);padding:0 .6rem;font-size:var(--button-font-size);background-color:var(--button-bg);border:1px solid var(--border-card);border-radius:var(--border-radius);cursor:pointer;color:var(--text-primary);";
+        createBtn.onclick=()=>{
+            createModal("Room name:","",name=>{
+                if(name&&name.trim()){
+                    if(socket&&socket.readyState===WebSocket.OPEN){
+                        socket.send(JSON.stringify({type:"createRoom",room:name.trim()}));
+                    }
+                }
+            });
+        };
+        headerControls.insertBefore(createBtn,roomSelector.nextSibling);
+    }
+    function updateRoomList(rooms,current){
+        if(!roomSelector)return;
+        let prev=roomSelector.value;
+        roomSelector.innerHTML="";
+        for(let room of rooms){
+            let opt=document.createElement("option");
+            opt.value=room.name;
+            opt.textContent=room.name+" ("+room.members+")";
+            if(room.name===current)opt.selected=true;
+            roomSelector.appendChild(opt);
+        }
+        if(current){currentRoom=current;}
+    }
     let onlineUsersList=[];
     function updateOnlineUsersList(usersStr){
         let parts=usersStr.split(": ");
@@ -309,6 +354,29 @@ document.addEventListener("DOMContentLoaded",()=>{
             updateTypingIndicator();
             return;
         }
+        if(data.type==="roomJoined"){
+            currentRoom=data.room;
+            if(data.rooms){updateRoomList(data.rooms,data.room);}
+            let li=document.createElement("li");
+            li.innerHTML=`<em>You joined ${escapeHtml(data.room)}</em>`;
+            li.style.cssText="white-space:pre-wrap;color:gray;font-style:italic;";
+            messagesList.appendChild(li);
+            scrollToBottom(messagesList);
+            return;
+        }
+        if(data.type==="roomCreated"){
+            if(data.rooms){updateRoomList(data.rooms,currentRoom);}
+            let li=document.createElement("li");
+            li.innerHTML=`<em>Room ${escapeHtml(data.room)} created</em>`;
+            li.style.cssText="white-space:pre-wrap;color:gray;font-style:italic;";
+            messagesList.appendChild(li);
+            scrollToBottom(messagesList);
+            return;
+        }
+        if(data.type==="roomList"){
+            if(data.rooms){updateRoomList(data.rooms,data.currentRoom);}
+            return;
+        }
         if(data.type==="file-start"){
             handleFileStart(data,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv);
             return;
@@ -450,6 +518,7 @@ document.addEventListener("DOMContentLoaded",()=>{
                 console.log("WebSocket connected");
                 reconnectAttempts=0;
                 socket.send(JSON.stringify({type:"join",username:currentUser}));
+                socket.send(JSON.stringify({type:"getRooms"}));
                 setTimeout(()=>{
                     if(socket&&socket.readyState===WebSocket.OPEN){
                         socket.send(JSON.stringify({type:"getUsers"}));
@@ -529,6 +598,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         if(clientRealIP==="Unknown"){await fetchAndDisplayIP();}
         loginPage.style.display="none";
         chatPage.style.display="block";
+        createRoomUI();
         intentionalClose=false;
         connect();
         checkScrollPosition(messagesList,scrollBtn,autoScroll);
