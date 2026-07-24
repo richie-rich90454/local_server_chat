@@ -1,17 +1,13 @@
 import express from"express";
 import path from"path";
-import{fileURLToPath}from"url";
 import{Filter}from"bad-words";
 import{PROTOCOL_VERSION}from"../protocol/constants.js";
 function getDistDir(){
-	// SEA: dist is next to the executable
-	let exeDir=path.dirname(process.execPath);
-	if(path.basename(process.execPath)==="node"||path.basename(process.execPath)==="node.exe"){
-		// Running via node (dev), resolve from source
-		let srcDir=import.meta.url?path.dirname(fileURLToPath(import.meta.url)):path.dirname(__filename);
-		return path.join(srcDir,"../../dist");
+	let scriptDir=path.dirname(process.argv[1]||".");
+	if(path.basename(process.argv[0]||"")==="node"||path.basename(process.argv[0]||"")==="node.exe"){
+		return path.join(scriptDir,"../../dist");
 	}
-	return path.join(exeDir,"dist");
+	return path.join(path.dirname(process.execPath),"dist");
 }
 export function createHttpServer(localIP,portUI,portWS,serverName,joinCode,joinCodeMap){
 	const app=express();
