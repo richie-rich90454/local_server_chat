@@ -24,7 +24,7 @@ try{
 			console.log("codesign not available, skipping.");
 		}
 	}
-	if(!isClient&&existsSync("dist")){
+	if(existsSync("dist")){
 		const distDir=join("release","dist");
 		if(!existsSync(distDir)){mkdirSync(distDir);}
 		cpSync("dist",distDir,{recursive:true});
