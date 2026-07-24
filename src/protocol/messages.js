@@ -1,4 +1,4 @@
-import{MSG,PROTOCOL_VERSION}from"./constants.js";
+import{MSG,PROTOCOL_VERSION,DISCOVERY_TYPE}from"./constants.js";
 export function createJoin(username){return{type:MSG.JOIN,username};}
 export function createJoinRoom(room){return{type:MSG.JOIN_ROOM,room};}
 export function createCreateRoom(room){return{type:MSG.CREATE_ROOM,room};}
