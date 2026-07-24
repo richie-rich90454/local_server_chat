@@ -193,6 +193,23 @@ function broadcastToRoom(roomName,message,excludeWs=null){
 		}
 	});
 }
+let pollIdCounter=0;
+const activePolls=new Map();
+function getPollsForRoom(roomName){
+	let polls=[];
+	for(const[poll]of activePolls){
+		if(poll.room===roomName&&poll.active){
+			polls.push({
+				id:poll.id,
+				question:poll.question,
+				options:poll.options.map((o,i)=>({text:o,votes:poll.votes.filter(v=>v===i).length})),
+				totalVotes:poll.votes.length,
+				createdBy:poll.createdBy
+			});
+		}
+	}
+	return polls;
+}
 function broadcastOnlineCount(){
 	const count=clients.length;
 	clients.forEach(client=>{
@@ -299,6 +316,93 @@ wsServer.on("connection",(ws,req)=>{
 		else if(data.type=="getRooms"){
 			let roomList=getRoomList();
 			ws.send(JSON.stringify({type:"roomList",rooms:roomList,currentRoom:ws.room}));
+			return;
+		}
+		else if(data.type=="createPoll"){
+			if(!data.question||!data.options||data.options.length<2){
+				ws.send(JSON.stringify({type:"system",message:"Poll needs a question and at least 2 options."}));
+				return;
+			}
+			let pollId=++pollIdCounter;
+			let poll={
+				id:pollId,
+				question:data.question.substring(0,200),
+				options:data.options.map(o=>o.substring(0,100)).slice(0,10),
+				votes:[],
+				votedBy:new Set(),
+				createdBy:ws.username||"Anonymous",
+				room:ws.room||"General",
+				active:true,
+				createdAt:Date.now()
+			};
+			activePolls.set(poll,poll);
+			let pollData={
+				type:"pollCreated",
+				id:pollId,
+				question:poll.question,
+				options:poll.options.map((o,i)=>({text:o,votes:0})),
+				totalVotes:0,
+				createdBy:poll.createdBy
+			};
+			broadcastToRoom(ws.room||"General",pollData);
+			return;
+		}
+		else if(data.type=="vote"){
+			if(!data.pollId||data.option===undefined){
+				ws.send(JSON.stringify({type:"system",message:"Invalid vote."}));
+				return;
+			}
+			let targetPoll=null;
+			for(const[poll]of activePolls){
+				if(poll.id===data.pollId){targetPoll=poll;break;}
+			}
+			if(!targetPoll||!targetPoll.active){
+				ws.send(JSON.stringify({type:"system",message:"Poll not found or closed."}));
+				return;
+			}
+			if(targetPoll.votedBy.has(ws)){
+				ws.send(JSON.stringify({type:"system",message:"You already voted."}));
+				return;
+			}
+			if(data.option<0||data.option>=targetPoll.options.length){
+				ws.send(JSON.stringify({type:"system",message:"Invalid option."}));
+				return;
+			}
+			targetPoll.votes.push(data.option);
+			targetPoll.votedBy.add(ws);
+			let pollData={
+				type:"pollUpdate",
+				id:targetPoll.id,
+				options:targetPoll.options.map((o,i)=>({text:o,votes:targetPoll.votes.filter(v=>v===i).length})),
+				totalVotes:targetPoll.votes.length
+			};
+			broadcastToRoom(targetPoll.room,pollData);
+			return;
+		}
+		else if(data.type=="closePoll"){
+			if(!data.pollId){
+				ws.send(JSON.stringify({type:"system",message:"Invalid poll ID."}));
+				return;
+			}
+			for(const[poll]of activePolls){
+				if(poll.id===data.pollId&&poll.createdBy===ws.username){
+					poll.active=false;
+					let pollData={
+						type:"pollClosed",
+						id:poll.id,
+						question:poll.question,
+						options:poll.options.map((o,i)=>({text:o,votes:poll.votes.filter(v=>v===i).length})),
+						totalVotes:poll.votes.length
+					};
+					broadcastToRoom(poll.room,pollData);
+					break;
+				}
+			}
+			return;
+		}
+		else if(data.type=="getPolls"){
+			let polls=getPollsForRoom(ws.room||"General");
+			ws.send(JSON.stringify({type:"pollList",polls:polls}));
 			return;
 		}
 		else if(data.type=="typing"){
