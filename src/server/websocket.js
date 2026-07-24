@@ -51,7 +51,7 @@ export function createWebSocketServer(portWS,localIP){
 		return polls;
 	}
 	function handleMessage(ws,data){
-		if(!data||typeof data.type!=="string"){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Invalid message format."}));return;}
+		if(!data){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Invalid message format."}));return;}
 		switch(data.type){
 			case MSG.JOIN:{
 				if(usernameToWs.has(data.username)){
