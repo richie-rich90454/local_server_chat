@@ -18,6 +18,23 @@ function parseArgs(argv){
 }
 const args=parseArgs(process.argv);
 const serverName=args.serverName;
+function generateJoinCode(){
+	const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+	let code="";
+	for(let i=0;i<4;i++){
+		code+=chars[Math.floor(Math.random()*chars.length)];
+	}
+	return code;
+}
+const joinCode=generateJoinCode();
+const joinCodeMap=new Map();
+joinCodeMap.set(joinCode,{ip:localIP,port:portWS,uiPort:portUI,name:serverName});
+setInterval(()=>{
+	for(const[key]of joinCodeMap.entries()){
+		joinCodeMap.delete(key);
+	}
+	joinCodeMap.set(joinCode,{ip:localIP,port:portWS,uiPort:portUI,name:serverName});
+},300000);
 const getLocalIP=()=>{
 	const nets=networkInterfaces();
 	for(const iface of Object.values(nets)){
@@ -55,8 +72,19 @@ app.get("/server-info",(req,res)=>{
 	res.json({
 		name:serverName,
 		port:portWS,
-		ip:localIP
+		ip:localIP,
+		joinCode:joinCode,
+		uiPort:portUI
 	});
+});
+app.get("/join-code/:code",(req,res)=>{
+	const info=joinCodeMap.get(req.params.code.toUpperCase());
+	if(info){
+		res.json({found:true,...info});
+	}
+	else{
+		res.json({found:false});
+	}
 });
 app.listen(portUI,()=>{
 	console.log(`UI on http://${localIP}:${portUI}`);
@@ -310,3 +338,4 @@ process.on("SIGINT",()=>{
 	});
 });
 console.log(`WebSocket server on ws://${localIP}:${portWS}`+(serverName?` "${serverName}"`:""));
+console.log(`Join code: ${joinCode}`);
