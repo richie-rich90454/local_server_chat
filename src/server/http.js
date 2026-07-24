@@ -8,7 +8,7 @@ const __dirname=path.dirname(__filename);
 export function createHttpServer(localIP,portUI,portWS,serverName,joinCode,joinCodeMap){
 	const app=express();
 	app.use(express.json());
-	app.use(express.static(path.join(__dirname,"../../../dist"),{
+	app.use(express.static(path.join(__dirname,"../../dist"),{
 		maxAge:"1h",
 		etag:true,
 		lastModified:true,
