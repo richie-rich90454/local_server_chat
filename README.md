@@ -110,11 +110,29 @@ This project provides a simple chat application that operates entirely within a 
   node server.js --name "Physics Classroom"
   ```
 
+* **Headless server** (WebSocket only, no browser UI):
+
+  ```bash
+  node server.js --no-http
+  ```
+
+* **Headless discoverable server**:
+
+  ```bash
+  node server.js --no-http --name "Robotics Lab"
+  ```
+
 * **Self-contained executable** (no Node.js required):
 
   ```bash
   npm run package
   ./LocalServerChat.exe
+  ```
+
+* **Terminal client** (connect from command line):
+
+  ```bash
+  npm run client
   ```
 
 ### Chat flow
@@ -126,6 +144,8 @@ This project provides a simple chat application that operates entirely within a 
 5. Messages preserve line breaks, spaces, and Markdown formatting. Your own messages appear in red.
 
 ## Commands & Shortcuts
+
+### Browser Client
 
 Type any of the following commands in the message input and send it (using **Shift+Enter** or the Send button):
 
@@ -143,6 +163,20 @@ Type any of the following commands in the message input and send it (using **Shi
 | `/2048` | Play a 2048 game in a modal window. |
 | `/chess` | Play chess against the computer (random legal moves). |
 | `/help` | Display available commands and keyboard shortcuts. |
+
+### Terminal Client
+
+| Command | Description |
+|---------|-------------|
+| `/nick <name>` | Change username. |
+| `/msg "user" message` | Send private message. |
+| `/users` | List online users. |
+| `/rooms` | List available rooms. |
+| `/join <room>` | Join a room. |
+| `/stats` | Show session statistics. |
+| `/ping` | Measure latency. |
+| `/help` | Show commands. |
+| `/quit` | Exit. |
 
 **Keyboard shortcuts** (inside the message textarea):
 
