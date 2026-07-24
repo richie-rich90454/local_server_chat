@@ -149,7 +149,7 @@ function connect(host,port){
 	});
 	socket.on("close",()=>{
 		print("Disconnected.");
-		process.exit(0);
+		setTimeout(()=>process.exit(0),200);
 	});
 	socket.on("error",(err)=>{
 		print(`Error: ${err.message}`);
