@@ -177,7 +177,11 @@ export function createWebSocketServer(portWS,localIP){
 			case MSG.IMAGE:case MSG.VOICE:case MSG.FILE_START:case MSG.FILE_END:{
 				if(data.type===MSG.FILE_END){stats.filesTransferred++;}
 				const{type,...rest}=data;
-				broadcastToRoom(ws.room||"General",{type,...rest,ip:ws.clientIP||"Unknown",timestamp:data.timestamp||new Date().toISOString()},ws);
+				clients.forEach(client=>{
+					if(client!==ws&&client.readyState===WebSocket.OPEN&&client.room===(ws.room||"General")){
+						client.send(JSON.stringify({type,...rest,ip:ws.clientIP||"Unknown",timestamp:data.timestamp||new Date().toISOString()}));
+					}
+				});
 				break;
 			}
 			default:{
