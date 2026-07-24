@@ -183,7 +183,15 @@ export function createWebSocketServer(portWS,localIP){
 			default:{
 				if(!checkRateAndBan(data.username)){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"You are temporarily banned."}));return;}
 				recordMessage();
-				broadcastToRoom(ws.room||"General",{username:data.username,message:data.message,ip:ws.clientIP||"Unknown",room:ws.room},ws);
+				const broadcastMsg={username:data.username,message:data.message,ip:ws.clientIP||"Unknown",room:ws.room};
+				const room=rooms.get(ws.room||"General");
+				if(room){
+					clients.forEach(client=>{
+						if(client.readyState===WebSocket.OPEN&&client.room===ws.room){
+							client.send(JSON.stringify(broadcastMsg));
+						}
+					});
+				}
 			}
 		}
 	}
