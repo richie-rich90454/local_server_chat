@@ -46,10 +46,18 @@ This project provides a simple chat application that operates entirely within a 
 * **Chat Export:** Export the conversation as TXT, JSON, or HTML.
 * **Clear Chat:** Client‑side clearing of the message list.
 * **Reply & Forward:** Right‑click any message to reply or forward to another user.
-* **Auto‑scroll:** Smart scrolling with a floating “jump to bottom” button.
+* **Auto‑scroll:** Smart scrolling with a floating "jump to bottom" button.
 * **Reconnect Logic:** Automatically retries when the WebSocket connection is interrupted.
 * **Rate Limiting:** 3 messages per second; exceeding this limit results in a 5‑second temporary ban.
 * **Join/Leave Notifications:** Shows who joined or left and lists the current users.
+* **Chat Rooms:** Ephemeral rooms created on demand, deleted when empty. Default rooms: General, Homework, Programming, Gaming, Robotics.
+* **Anonymous Polls:** Create polls with `/poll "Question" "Option1" "Option2"`. One vote per connection, results shown in real time.
+* **Live Statistics:** `/stats` shows users online, messages/min, files transferred, uptime.
+* **Network Diagnostics:** `/diag` shows HTTP reachability, WebSocket status, latency.
+* **Identicons:** Deterministic geometric SVG avatars displayed next to every username.
+* **Join Codes:** 4-character alphanumeric codes displayed on login with QR code. Enter a code on another device to connect instantly.
+* **LAN Discovery:** Server advertises itself via UDP multicast. Other servers on the network can be discovered automatically.
+* **Self-Contained Executable:** Build a standalone executable with `npm run package`. No Node.js required to run.
 * **Built‑in Games:**
   * `/2048` – Play 2048.
   * `/chess` – Play chess against a computer opponent (random legal moves).
@@ -96,6 +104,19 @@ This project provides a simple chat application that operates entirely within a 
   ```
   Then open `http://<host-machine-ip>:2047`.
 
+* **Discoverable server** (enables LAN discovery with a name):
+
+  ```bash
+  node server.js --name "Physics Classroom"
+  ```
+
+* **Self-contained executable** (no Node.js required):
+
+  ```bash
+  npm run package
+  ./LocalServerChat.exe
+  ```
+
 ### Chat flow
 
 1. Enter a username (or click **Generate Random Username** to obtain a random clean name).
@@ -112,6 +133,13 @@ Type any of the following commands in the message input and send it (using **Shi
 |---------|-------------|
 | `/users` | List all online users. |
 | `/msg "username" message` | Send a private message (use double quotes around the username if it contains spaces). |
+| `/poll "Question" "Option1" "Option2"` | Create an anonymous poll. Click vote buttons to vote. |
+| `/nick <newname>` | Change your username. |
+| `/stats` | Show live session statistics. |
+| `/diag` | Run network diagnostics. |
+| `/ping` | Measure connection latency. |
+| `/clear` | Clear all messages from your view. |
+| `/clear <N>` | Clear last N messages. |
 | `/2048` | Play a 2048 game in a modal window. |
 | `/chess` | Play chess against the computer (random legal moves). |
 | `/help` | Display available commands and keyboard shortcuts. |
@@ -137,8 +165,9 @@ To allow other devices on your local network to connect, you may need to open th
 
 * **HTTP UI (static files):** `2047`
 * **WebSocket server (real‑time messaging):** `8191`
+* **UDP multicast (LAN discovery):** `9876`
 
-**Both ports must be accessible** for the chat to function properly. The browser loads the page on port 2047 and then opens a WebSocket connection to port 8191.
+**All three ports must be accessible** for full functionality. The browser loads the page on port 2047 and then opens a WebSocket connection to port 8191. UDP multicast on port 9876 enables automatic server discovery.
 
 > If you are running in **development mode** with `npm run dev`, Vite’s dev server uses port **5173** for the UI. That port must also be open if you wish for other devices to access the development build.
 
@@ -147,6 +176,7 @@ To allow other devices on your local network to connect, you may need to open th
 ```bash
 sudo ufw allow 2047/tcp
 sudo ufw allow 8191/tcp
+sudo ufw allow 9876/udp
 ```
 
 ### Windows (PowerShell as Administrator)
@@ -156,12 +186,14 @@ Open **PowerShell as Administrator** (right‑click Windows Start → Windows Po
 ```powershell
 New-NetFirewallRule -DisplayName "Local Server Chat HTTP" -Direction Inbound -Protocol TCP -LocalPort 2047 -Action Allow
 New-NetFirewallRule -DisplayName "Local Server Chat WebSocket" -Direction Inbound -Protocol TCP -LocalPort 8191 -Action Allow
+New-NetFirewallRule -DisplayName "Local Server Chat Discovery" -Direction Inbound -Protocol UDP -LocalPort 9876 -Action Allow
 ```
 
 > **Important:** You must run PowerShell **as Administrator** for these commands to succeed. To remove the rules at a later time:
 > ```powershell
 > Remove-NetFirewallRule -DisplayName "Local Server Chat HTTP"
 > Remove-NetFirewallRule -DisplayName "Local Server Chat WebSocket"
+> Remove-NetFirewallRule -DisplayName "Local Server Chat Discovery"
 > ```
 
 Once the ports are open, any device on the same subnet (for example, `192.168.x.x`, `10.x.x.x`, `172.16.x.x`) can access the chat at:
@@ -204,10 +236,11 @@ This project is intended for **trusted local networks**. Do not use it to exchan
 
 ## Technologies
 
-* **Server:** Node.js, Express, [ws](https://www.npmjs.com/package/ws), [bad-words](https://www.npmjs.com/package/bad-words)
-* **Client:** HTML5, CSS3, JavaScript (ES6 modules), [highlight.js](https://highlightjs.org/), [chess.js](https://github.com/jhlywa/chess.js)
+* **Server:** Node.js, Express, [ws](https://www.npmjs.com/package/ws), [bad-words](https://www.npmjs.com/package/bad-words), UDP multicast (LAN discovery)
+* **Client:** HTML5, CSS3, JavaScript (ES6 modules), [highlight.js](https://highlightjs.org/), [chess.js](https://github.com/jhlywa/chess.js), [qrcode](https://www.npmjs.com/package/qrcode)
 * **Styling:** Custom CSS with CSS variables, [Noto Sans](https://fonts.google.com/specimen/Noto+Sans), responsive design
 * **Build Tool:** [Vite](https://vitejs.dev/) with Lightning CSS transformer
+* **Packaging:** [pkg](https://www.npmjs.com/package/pkg) for self-contained executables
 * **Games:** Self‑contained 2048 and chess (human versus computer)
 
 ## Dependencies
@@ -219,9 +252,10 @@ All dependencies are listed in `package.json` and are automatically installed wi
 - `bad-words` – Profanity filter for usernames
 - `highlight.js` – Syntax highlighting for code blocks
 - `chess.js` – Chess game logic
+- `qrcode` – QR code generation for join codes
 - `highlightjs-zig`, `highlightjs-cobol` – Additional language support
 
-Development dependencies include Vite and its HTML plugin.
+Development dependencies include Vite, its HTML plugin, and `pkg` for building standalone executables.
 
 ## Favicon
 
