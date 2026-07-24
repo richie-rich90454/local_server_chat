@@ -6,6 +6,18 @@ import {fileURLToPath} from "url";
 import {Filter} from "bad-words";
 const __filename=fileURLToPath(import.meta.url);
 const __dirname=path.dirname(__filename);
+function parseArgs(argv){
+	let serverName=null;
+	for(let i=2;i<argv.length;i++){
+		if(argv[i]==="--name"&&argv[i+1]){
+			serverName=argv[i+1];
+			i++;
+		}
+	}
+	return{serverName};
+}
+const args=parseArgs(process.argv);
+const serverName=args.serverName;
 const getLocalIP=()=>{
 	const nets=networkInterfaces();
 	for(const iface of Object.values(nets)){
@@ -38,6 +50,13 @@ app.get("/get-client-ip",(req,res)=>{
 		ip=ip.split("::ffff:")[1];
 	}
 	res.json({ip:ip});
+});
+app.get("/server-info",(req,res)=>{
+	res.json({
+		name:serverName,
+		port:portWS,
+		ip:localIP
+	});
 });
 app.listen(portUI,()=>{
 	console.log(`UI on http://${localIP}:${portUI}`);
@@ -290,4 +309,4 @@ process.on("SIGINT",()=>{
 		process.exit(0);
 	});
 });
-console.log(`WebSocket server on ws://${localIP}:${portWS}`);
+console.log(`WebSocket server on ws://${localIP}:${portWS}`+(serverName?` "${serverName}"`:""));
