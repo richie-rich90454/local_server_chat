@@ -4,7 +4,7 @@ import{MSG,WS_PORT,PROTOCOL_VERSION}from"./src/protocol/constants.js";
 const args=process.argv.slice(2);
 let manualHost=null;
 let manualPort=WS_PORT;
-for(let i=2;i<args.length;i++){
+for(let i=0;i<args.length;i++){
 	if(args[i]==="--host"&&args[i+1]){manualHost=args[i+1];i++;}
 	if(args[i]==="--port"&&args[i+1]){manualPort=parseInt(args[i+1]);i++;}
 }
