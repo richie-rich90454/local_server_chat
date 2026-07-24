@@ -3,13 +3,20 @@ import path from"path";
 import{fileURLToPath}from"url";
 import{Filter}from"bad-words";
 import{PROTOCOL_VERSION}from"../protocol/constants.js";
-// In ESM: import.meta.url works. In SEA CJS bundle: falls back to __filename.
-const fileUrl=import.meta.url?fileURLToPath(import.meta.url):__filename;
-const dirName=path.dirname(fileUrl);
+function getDistDir(){
+	// SEA: dist is next to the executable
+	let exeDir=path.dirname(process.execPath);
+	if(path.basename(process.execPath)==="node"||path.basename(process.execPath)==="node.exe"){
+		// Running via node (dev), resolve from source
+		let srcDir=import.meta.url?path.dirname(fileURLToPath(import.meta.url)):path.dirname(__filename);
+		return path.join(srcDir,"../../dist");
+	}
+	return path.join(exeDir,"dist");
+}
 export function createHttpServer(localIP,portUI,portWS,serverName,joinCode,joinCodeMap){
 	const app=express();
 	app.use(express.json());
-	app.use(express.static(path.join(dirName,"../../dist"),{
+	app.use(express.static(getDistDir(),{
 		maxAge:"1h",
 		etag:true,
 		lastModified:true,
