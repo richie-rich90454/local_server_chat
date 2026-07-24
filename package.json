@@ -21,7 +21,7 @@
         "client": "node LocalServerChatClient.js",
         "dev": "vite dev",
         "build": "vite build",
-        "bundle": "esbuild server.js --bundle --platform=node --format=esm --outfile=server-bundle.js --external:ws",
+        "bundle": "esbuild server.js --bundle --platform=node --format=cjs --outfile=server-bundle.cjs",
         "sea": "node --experimental-sea-config sea-config.json",
         "package": "vite build && npm run bundle && npm run sea && node scripts/inject-sea.js"
     },

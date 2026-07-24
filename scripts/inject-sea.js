@@ -9,12 +9,10 @@ if(!existsSync(blob)){
     console.error("sea-prep.blob not found. Run 'npm run sea' first.");
     process.exit(1);
 }
-if(existsSync(target)){rmSync(target);}
-if(!existsSync("release")){import("fs").then(fs=>fs.mkdirSync("release"));}
-cpSync(nodeExe,target);
+if(!existsSync(target)){cpSync(nodeExe,target);}
 console.log("Copied node executable to "+target);
 try{
-    execSync(`npx postject "${target}" NODE_SEA_BLOB "${blob}" --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2`,{stdio:"inherit"});
+    execSync(`npx postject "${target}" NODE_SEA_BLOB "${blob}" --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 --overwrite`,{stdio:"inherit"});
     console.log("SEA blob injected successfully.");
     if(process.platform==="win32"){
         try{
