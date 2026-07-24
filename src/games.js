@@ -594,6 +594,12 @@ export function processCommand(msg,currentUser,socket,clientRealIP,chatPage,user
         }
         return true;
     }
+    if(msg==="/stats"){
+        if(socket&&socket.readyState===WebSocket.OPEN){
+            socket.send(JSON.stringify({type:"getStats"}));
+        }
+        return true;
+    }
     if(msg==="/diag"){
         showSystemMessageFn("Running diagnostics...");
         let wsState=socket?socket.readyState:-1;
@@ -668,6 +674,8 @@ Shift+Enter - Send message
 /clear <N> - Clear last N messages
 /ping - Measure connection latency
 /diag - Run network diagnostics
+/stats - Show session statistics
+/poll "Question" "Option1" "Option2" - Create anonymous poll
 /2048 - Play 2048 game
 /chess - Play Chess vs Computer (choose difficulty)
         `;
@@ -675,7 +683,7 @@ Shift+Enter - Send message
         return true;
     }
     if(msg==="/help"){
-        let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/poll \"Question\" \"Option1\" \"Option2\" - create anonymous poll\n/2048 - play 2048 game\n/chess - play Chess vs Computer (difficulty selection)\n/nick <newname> - change your username\n/clear [N] - clear all or last N messages\n/ping - measure latency\n/diag - run network diagnostics\n/shortcuts - show keyboard shortcuts\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
+        let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/poll \"Question\" \"Option1\" \"Option2\" - create anonymous poll\n/2048 - play 2048 game\n/chess - play Chess vs Computer (difficulty selection)\n/nick <newname> - change your username\n/clear [N] - clear all or last N messages\n/ping - measure latency\n/diag - run network diagnostics\n/stats - show session statistics\n/shortcuts - show keyboard shortcuts\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
         showSystemMessageFn(help);
         return true;
     }

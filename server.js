@@ -195,6 +195,33 @@ function broadcastToRoom(roomName,message,excludeWs=null){
 }
 let pollIdCounter=0;
 const activePolls=new Map();
+let stats={
+	messagesTotal:0,
+	messagesLastMinute:0,
+	messageTimestamps:[],
+	filesTransferred:0,
+	startTime:Date.now()
+};
+function recordMessage(){
+	stats.messagesTotal++;
+	let now=Date.now();
+	stats.messageTimestamps.push(now);
+	stats.messageTimestamps=stats.messageTimestamps.filter(t=>now-t<60000);
+	stats.messagesLastMinute=stats.messageTimestamps.length;
+}
+function getStats(){
+	let now=Date.now();
+	stats.messageTimestamps=stats.messageTimestamps.filter(t=>now-t<60000);
+	return{
+		usersOnline:clients.length,
+		messagesPerMinute:stats.messageTimestamps.length,
+		messagesTotal:stats.messagesTotal,
+		filesTransferred:stats.filesTransferred,
+		uptime:Math.floor((now-stats.startTime)/1000),
+		rooms:rooms.size,
+		activePolls:0
+	};
+}
 function getPollsForRoom(roomName){
 	let polls=[];
 	for(const[poll]of activePolls){
@@ -420,6 +447,19 @@ wsServer.on("connection",(ws,req)=>{
 			}
 			return;
 		}
+		else if(data.type=="getStats"){
+			let s=getStats();
+			let uptimeH=Math.floor(s.uptime/3600);
+			let uptimeM=Math.floor((s.uptime%3600)/60);
+			let uptimeS=s.uptime%60;
+			let uptimeStr="";
+			if(uptimeH>0)uptimeStr+=uptimeH+"h ";
+			if(uptimeM>0)uptimeStr+=uptimeM+"m ";
+			uptimeStr+=uptimeS+"s";
+			let msg=`Session Statistics:\n\nUsers online: ${s.usersOnline}\nMessages/min: ${s.messagesPerMinute}\nTotal messages: ${s.messagesTotal}\nFiles transferred: ${s.filesTransferred}\nActive rooms: ${s.rooms}\nUptime: ${uptimeStr}`;
+			ws.send(JSON.stringify({type:"system",message:msg}));
+			return;
+		}
 		else if(data.type=="private"){
 			if(!checkRateAndBan(data.username)){
 				ws.send(JSON.stringify({type:"system",message:"You are temporarily banned for spamming."}));
@@ -473,6 +513,7 @@ wsServer.on("connection",(ws,req)=>{
 			return;
 		}
 		else if(data.type=="image"||data.type=="voice"||data.type=="file-start"||data.type=="file-end"||data.type=="file"){
+			if(data.type==="file-end"){stats.filesTransferred++;}
 			const {type,...rest}=data;
 			const payload={
 				type,
@@ -487,6 +528,7 @@ wsServer.on("connection",(ws,req)=>{
 			ws.send(JSON.stringify({type:"system",message:"You are temporarily banned."}));
 			return;
 		}
+		recordMessage();
 		const broadcastMsg={
 			username:data.username,
 			message:data.message,
