@@ -4,6 +4,7 @@ import {connectWebSocket} from "./websocket.js";
 import {create2048Game, createChessGame, processCommand, updateDeveloperMode, applyGoldBorder, showSystemMessage, doRandomEasterEgg, getUnlockCount, incrementUnlockCount} from "./games.js";
 import {initFileHandlers, handleFileStart, handleBinaryChunk, handleFileEnd, handleFileCancel} from "./file-handler.js";
 import QRCode from "qrcode";
+import {generateIdenticon} from "./identicon.js";
 document.addEventListener("DOMContentLoaded",()=>{
     let headerControls=document.getElementById("headerControls");
     if(headerControls&&!document.getElementById("exportFormat")){
@@ -334,7 +335,10 @@ document.addEventListener("DOMContentLoaded",()=>{
             let time=data.timestamp||getCurrentTime();
             let formatted=formatMarkdown(data.message);
             let ip=data.ip||"Unknown";
-            let html=data.self?`[Private to ${escapeHtml(data.target)}] You [${ip}] (${time}): ${formatted}`:`[Private] ${escapeHtml(data.from)} [${ip}] (${time}): ${formatted}`;
+            let identiconName=data.self?data.target:data.from;
+            let identiconSvg=generateIdenticon(identiconName,20);
+            let identiconHtml=identiconSvg?" "+identiconSvg.outerHTML:"";
+            let html=data.self?`[Private to ${escapeHtml(data.target)}] You [${ip}] (${time}): ${formatted}${identiconHtml}`:`[Private] ${escapeHtml(data.from)} [${ip}] (${time}): ${formatted}${identiconHtml}`;
             let li=document.createElement("li");
             li.innerHTML=html;
             li.style.whiteSpace="pre-wrap";
@@ -349,7 +353,9 @@ document.addEventListener("DOMContentLoaded",()=>{
             let time=getCurrentTime();
             let ip=data.ip||clientRealIP||"Unknown";
             let imgHtml=`<img src="${escapeHtml(data.image)}" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:4px;cursor:pointer;" onclick="window.open(this.src,'_blank')">`;
-            let rawHtml=`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${imgHtml}`;
+            let identiconSvg=generateIdenticon(data.username,20);
+            let identiconHtml=identiconSvg?identiconSvg.outerHTML+" ":"";
+            let rawHtml=identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${imgHtml}`;
             let li=document.createElement("li");
             li.innerHTML=rawHtml;
             if(data.username===currentUser){li.classList.add("userMessage");}
@@ -363,7 +369,9 @@ document.addEventListener("DOMContentLoaded",()=>{
             let time=getCurrentTime();
             let ip=data.ip||clientRealIP||"Unknown";
             let audioHtml=`<audio controls src="${escapeHtml(data.voice)}" style="max-width:100%;"></audio>`;
-            let rawHtml=`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${audioHtml}`;
+            let identiconSvg=generateIdenticon(data.username,20);
+            let identiconHtml=identiconSvg?identiconSvg.outerHTML+" ":"";
+            let rawHtml=identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${audioHtml}`;
             let li=document.createElement("li");
             li.innerHTML=rawHtml;
             if(data.username===currentUser){li.classList.add("userMessage");}
@@ -391,11 +399,16 @@ document.addEventListener("DOMContentLoaded",()=>{
         let time=getCurrentTime();
         let formatted=formatMarkdown(data.message||"");
         let ip=data.ip||clientRealIP||"Unknown";
-        let baseHtml=`${escapeHtml(data.username)} [${ip}] (${time}): ${formatted}`;
+        let identiconSvg=generateIdenticon(data.username,20);
+        let identiconHtml=identiconSvg?identiconSvg.outerHTML+" ":"";
+        let baseHtml=identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}): ${formatted}`;
         let finalHtml=highlightMentions(baseHtml,currentUser);
         let li=document.createElement("li");
         li.innerHTML=finalHtml;
         li.style.whiteSpace="pre-wrap";
+        li.style.display="flex";
+        li.style.alignItems="flex-start";
+        li.style.gap="0.3rem";
         if(data.username===currentUser){li.classList.add("userMessage");}
         else{li.classList.add("otherMessage");}
         let replySpan=document.createElement("span");
