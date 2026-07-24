@@ -180,16 +180,11 @@ export function createWebSocketServer(portWS,localIP){
 			case MSG.IMAGE:case MSG.VOICE:case MSG.FILE_START:case MSG.FILE_END:{
 				if(data.type===MSG.FILE_END){stats.filesTransferred++;}
 				const{type,...rest}=data;
-				let sent=0;
 				clients.forEach(client=>{
 					if(client!==ws&&client.readyState===WebSocket.OPEN&&client.room===(ws.room||"General")){
 						client.send(JSON.stringify({type,...rest,ip:ws.clientIP||"Unknown",timestamp:data.timestamp||new Date().toISOString()}));
-						sent++;
 					}
 				});
-				if(data.type===MSG.FILE_START||data.type===MSG.FILE_END){
-					console.log(`File ${type}: transferId=${data.transferId} sentTo=${sent} senderRoom=${ws.room}`);
-				}
 				break;
 			}
 			default:{
