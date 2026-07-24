@@ -577,22 +577,48 @@ document.addEventListener("DOMContentLoaded",()=>{
                 setTimeout(()=>{
                     if(socket&&socket.readyState===WebSocket.OPEN){
                         socket.send(JSON.stringify({type:"getUsers"}));
+                    }
+                },500);
+            },
+            onClose: ()=>{
+                console.log("WebSocket closed");
+                if(!intentionalClose&&currentUser&&chatPage.style.display==="block"){
+                    showChatError(chatErrorDiv,"Connection lost. Reconnecting...");
+                    clearTimeout(reconnectTimer);
+                    reconnectTimer=setTimeout(()=>{
+                        reconnectAttempts++;
+                        let delay=Math.min(3000,1000*Math.pow(1.5,reconnectAttempts));
+                        setTimeout(connect,delay);
+                    },3000);
+                }
+            },
+            onError: (e)=>console.error(e)
+        };
+        let ws=connectWebSocket(defaultPort,handlers);
+        socket=ws;
     }
     fetch("/server-info").then(r=>r.json()).then(info=>{
         let serverInfoDiv=document.getElementById("serverInfo");
         let serverNameEl=document.getElementById("serverName");
         let joinCodeValue=document.getElementById("joinCodeValue");
+        let altJoinSection=document.getElementById("altJoinSection");
         if(info.name&&serverNameEl){
             serverNameEl.textContent=info.name;
         }
         if(info.joinCode&&joinCodeValue){
             joinCodeValue.textContent=info.joinCode;
         }
-        if(serverInfoDiv){
+        if(serverInfoDiv&&info.name){
             serverInfoDiv.style.display="block";
         }
+        if(altJoinSection&&info.name){
+            altJoinSection.style.display="block";
+        }
+        else if(altJoinSection){
+            altJoinSection.style.display="none";
+        }
         let qrCanvas=document.getElementById("qrCanvas");
-        if(qrCanvas&&info.ip){
+        if(qrCanvas&&info.ip&&info.name){
             let url=`http://${info.ip}:${info.uiPort||2047}`;
             QRCode.toCanvas(qrCanvas,url,{width:128,margin:1,errorCorrectionLevel:"L"}).catch(()=>{});
         }
@@ -622,25 +648,6 @@ document.addEventListener("DOMContentLoaded",()=>{
         joinCodeInput.addEventListener("keypress",(e)=>{
             if(e.key==="Enter"){joinCodeBtn.click();}
         });
-    }
-                },500);
-            },
-            onClose: ()=>{
-                console.log("WebSocket closed");
-                if(!intentionalClose&&currentUser&&chatPage.style.display==="block"){
-                    showChatError(chatErrorDiv,"Connection lost. Reconnecting...");
-                    clearTimeout(reconnectTimer);
-                    reconnectTimer=setTimeout(()=>{
-                        reconnectAttempts++;
-                        let delay=Math.min(3000,1000*Math.pow(1.5,reconnectAttempts));
-                        setTimeout(connect,delay);
-                    },3000);
-                }
-            },
-            onError: (e)=>console.error(e)
-        };
-        let ws=connectWebSocket(defaultPort,handlers);
-        socket=ws;
     }
     async function loggingIn(){
         let username=usernameInput.value.trim();
