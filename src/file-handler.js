@@ -3,13 +3,14 @@ export const CHUNK_SIZE=16*1024*1024;
 export const ALLOWED_FILE_TYPES=[];
 const FILE_TRANSFER_TIMEOUT=300000;
 export function formatFileSize(bytes){
-    if(bytes===0)return"0 Bytes";
+    if(!bytes||bytes===0)return"0 Bytes";
     const k=1024;
     const sizes=["Bytes","KB","MB","GB"];
     const i=Math.floor(Math.log(bytes)/Math.log(k));
     return parseFloat((bytes/Math.pow(k,i)).toFixed(2))+" "+sizes[i];
 }
 export function getFileTypeCategory(mimeType){
+    if(!mimeType)return"other";
     if(mimeType.startsWith("image/"))return"image";
     if(mimeType==="application/pdf")return"pdf";
     if(mimeType.includes("zip")||mimeType.includes("rar")||mimeType.includes("7z"))return"archive";
@@ -159,6 +160,7 @@ export function handleBinaryChunk(arrayBuffer,messagesList,scrollToBottom,checkS
     }
 }
 export function handleFileStart(data,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv){
+    if(data.username===currentUser)return;
     const meta={
         transferId:data.transferId,
         fileName:data.fileName,

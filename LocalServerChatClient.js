@@ -153,7 +153,7 @@ function connect(host,port){
 	});
 	socket.on("error",(err)=>{
 		print(`Error: ${err.message}`);
-		process.exit(1);
+		setTimeout(()=>process.exit(1),200);
 	});
 }
 if(manualHost){
