@@ -171,7 +171,8 @@ export function handleFileStart(data,messagesList,scrollToBottom,checkScrollPosi
         totalChunks:data.totalChunks,
         placeholderLi:null,
         placeholderBar:null,
-        completed:false
+        completed:false,
+        _deps:{messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv}
     };
     incomingFiles.set(data.transferId,meta);
     const timeoutId=setTimeout(()=>{
@@ -325,7 +326,13 @@ function checkFileComplete(transferId,messagesList,scrollToBottom,checkScrollPos
     }
     incomingFiles.delete(transferId);
 }
-export function handleFileEnd(data){}
+export function handleFileEnd(data){
+    const meta=incomingFiles.get(data.transferId);
+    if(!meta||meta.completed)return;
+    if(meta._deps){
+        checkFileComplete(data.transferId,meta._deps.messagesList,meta._deps.scrollToBottom,meta._deps.checkScrollPosition,meta._deps.scrollBtn,meta._deps.autoScroll,meta._deps.escapeHtml,meta._deps.getCurrentTime,meta._deps.currentUser,meta._deps.showChatError,meta._deps.chatErrorDiv);
+    }
+}
 export const activeTransfers=new Map();
 export function cancelFileTransfer(transferId){
     const ctrl=activeTransfers.get(transferId);
