@@ -1,7 +1,4 @@
 export function createDiscoveryClient(){
-	let servers=[];
-	let onServersFound=null;
-	let polling=false;
 	async function fetchServerInfo(host,port=2047){
 		try{
 			const response=await fetch(`http://${host}:${port}/server-info`);
@@ -24,6 +21,5 @@ export function createDiscoveryClient(){
 			return null;
 		}
 	}
-	function setServersFoundCallback(cb){onServersFound=cb;}
-	return{fetchServerInfo,joinWithCode,setServersFoundCallback};
+	return{fetchServerInfo,joinWithCode};
 }

@@ -1,4 +1,4 @@
-import{formatMarkdown,highlightMentions,escapeHtml}from"../highlight-config.js";
+import{formatMarkdown,highlightMentions}from"../highlight-config.js";
 import{generateIdenticon}from"../identicon.js";
 import{getCurrentTime}from"../ui-helpers.js";
 export function renderMessage(data,currentUser){

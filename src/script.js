@@ -85,7 +85,6 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
     function updateRoomList(rooms,current){
         if(!roomSelector)return;
-        let prev=roomSelector.value;
         roomSelector.innerHTML="";
         for(let room of rooms){
             let opt=document.createElement("option");
