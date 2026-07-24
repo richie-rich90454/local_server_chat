@@ -18,15 +18,15 @@
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
         "start": "node server.js",
-        "client": "node LocalServerChatClient.js",
+        "client": "node client.js",
         "dev": "vite dev",
         "build": "vite build",
         "bundle": "esbuild server.js --bundle --platform=node --format=cjs --outfile=server-bundle.cjs",
-        "bundle-client": "esbuild LocalServerChatClient.js --bundle --platform=node --format=cjs --outfile=client-bundle.cjs",
+        "bundle-client": "esbuild client.js --bundle --platform=node --format=cjs --outfile=client-bundle.cjs",
         "sea": "node --experimental-sea-config sea-config.json",
         "sea-client": "node --experimental-sea-config sea-config-client.json",
         "package": "vite build && npm run bundle && npm run sea && node scripts/inject-sea.js",
-        "package-client": "npm run bundle-client && npm run sea-client && node scripts/inject-sea.js --client"
+        "package-client": "vite build && npm run bundle-client && npm run sea-client && node scripts/inject-sea.js --client"
     },
     "keywords": [
         "WebSocket",
