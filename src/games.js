@@ -1,3 +1,4 @@
+import{showChatError}from"./ui-helpers.js";
 let unlockCount=localStorage.getItem("unlockCount")?parseInt(localStorage.getItem("unlockCount")):0;
 let developerMode=false;
 export function getUnlockCount(){return unlockCount;}
