@@ -742,6 +742,16 @@ body[data-theme="dark"] #chessBoard div{
     background-color:var(--background-card);
     color:var(--text-primary);
 }
+#roomSelector{
+    background-color:var(--button-bg);
+    color:var(--text-primary);
+    border:1px solid var(--border-card);
+    border-radius:var(--border-radius);
+    padding:0 .6rem;
+    height:var(--button-height);
+    font-size:var(--button-font-size);
+    cursor:pointer;
+}
 .file-message{
     display:flex;
     align-items:center;
