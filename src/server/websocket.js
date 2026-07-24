@@ -33,6 +33,7 @@ export function createWebSocketServer(portWS,localIP){
 		clients.forEach(client=>{if(client!==excludeWs&&client.readyState===WebSocket.OPEN&&client.room===roomName){client.send(JSON.stringify(message));}});
 	}
 	function broadcastOnlineCount(){const count=clients.length;clients.forEach(client=>{if(client.readyState===WebSocket.OPEN){client.send(JSON.stringify({type:MSG.ONLINE_COUNT,count}));}});}
+	function broadcastRoomList(){const rooms=getRoomList();clients.forEach(client=>{if(client.readyState===WebSocket.OPEN){client.send(JSON.stringify({type:MSG.ROOM_LIST,rooms,currentRoom:client.room}));}});}
 	function getCurrentUsersList(){let users=[];for(const[username]of usernameToWs.entries()){users.push(username);}return users.join(", ");}
 	function broadcastSystemMessage(message,excludeWs=null){clients.forEach(client=>{if(client!==excludeWs&&client.readyState===WebSocket.OPEN){client.send(JSON.stringify({type:MSG.SYSTEM,message}));}});}
 	function getStats(){
@@ -70,11 +71,12 @@ export function createWebSocketServer(portWS,localIP){
 				targetRoom=targetRoom.trim().substring(0,20);
 				if(!rooms.has(targetRoom)){rooms.set(targetRoom,{name:targetRoom,members:new Set()});}
 				if(ws.room){let oldRoom=rooms.get(ws.room);if(oldRoom){oldRoom.members.delete(ws);}}
-				ws.room=targetRoom;
-				rooms.get(targetRoom).members.add(ws);
-				ws.send(JSON.stringify({type:MSG.ROOM_JOINED,room:targetRoom,rooms:getRoomList()}));
-				broadcastToRoom(targetRoom,{type:MSG.SYSTEM,message:`${ws.username} joined ${targetRoom}`},ws);
-				break;
+			ws.room=targetRoom;
+			rooms.get(targetRoom).members.add(ws);
+			ws.send(JSON.stringify({type:MSG.ROOM_JOINED,room:targetRoom,rooms:getRoomList()}));
+			broadcastToRoom(targetRoom,{type:MSG.SYSTEM,message:`${ws.username} joined ${targetRoom}`},ws);
+			broadcastRoomList();
+			break;
 			}
 			case MSG.CREATE_ROOM:{
 				let newRoom=data.room;
@@ -226,8 +228,9 @@ export function createWebSocketServer(portWS,localIP){
 					const userList=getCurrentUsersList();
 					broadcastSystemMessage(`${ws.username} left. Current users: ${userList}`);
 				}
-				broadcastOnlineCount();
-				console.log("Client disconnected. Remaining: "+clients.length);
+			broadcastOnlineCount();
+			broadcastRoomList();
+			console.log("Client disconnected. Remaining: "+clients.length);
 			}
 		});
 	});
