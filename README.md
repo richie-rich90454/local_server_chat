@@ -129,10 +129,19 @@ This project provides a simple chat application that operates entirely within a 
   ./LocalServerChat.exe
   ```
 
+* **Client executable** (connects to remote servers, serves UI locally):
+
+  ```bash
+  npm run package-client
+  ./LocalServerChatClient.exe
+  ```
+
+  Opens browser with discovery page. Select a server or enter IP manually.
+
 * **Terminal client** (connect from command line):
 
   ```bash
-  npm run client
+  node LocalServerChatClient.js --host 192.168.1.50 --port 8191
   ```
 
 ### Chat flow

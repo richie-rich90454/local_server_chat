@@ -40,6 +40,7 @@ No lint, typecheck, or test commands exist. `npm test` is a stub that exits 1.
 - `src/identicon.js` — deterministic SVG avatars.
 - `src/ui-helpers.js` — modal, export, theme utilities.
 - `src/highlight-config.js` — syntax highlighting + markdown.
+- `client.js` — GUI client entry point (serves UI locally, listens for LAN servers, connects to remote server).
 - `LocalServerChatClient.js` — native TUI client.
 - `vite.config.js` — builds to `dist/`.
 - `sea-config.json` — Node.js SEA config for standalone exe.
