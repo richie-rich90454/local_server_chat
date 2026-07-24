@@ -172,6 +172,27 @@ function cleanRateLimitMap(){
 	}
 }
 setInterval(cleanRateLimitMap,300000);
+const rooms=new Map();
+const defaultRooms=["General","Homework","Programming","Gaming","Robotics"];
+for(const name of defaultRooms){
+	rooms.set(name,{name,members:new Set()});
+}
+function getRoomList(){
+	let list=[];
+	for(const[name,room]of rooms){
+		list.push({name,members:room.members.size});
+	}
+	return list;
+}
+function broadcastToRoom(roomName,message,excludeWs=null){
+	const room=rooms.get(roomName);
+	if(!room)return;
+	clients.forEach(client=>{
+		if(client!==excludeWs&&client.readyState===WebSocket.OPEN&&client.room===roomName){
+			client.send(JSON.stringify(message));
+		}
+	});
+}
 function broadcastOnlineCount(){
 	const count=clients.length;
 	clients.forEach(client=>{
@@ -203,15 +224,13 @@ wsServer.on("connection",(ws,req)=>{
 		clientIP=clientIP.split("::ffff:")[1];
 	}
 	ws.clientIP=clientIP;
+	ws.room="General";
+	const generalRoom=rooms.get("General");
+	if(generalRoom){generalRoom.members.add(ws);}
 	ws.send(JSON.stringify({type:"system",message:`Your IP is ${clientIP}`}));
 	ws.on("message",(message,isBinary)=>{
 		if(isBinary){
-			// All binary chunks are forwarded immediately – no rate limit.
-			clients.forEach(client=>{
-				if(client!==ws&&client.readyState===WebSocket.OPEN){
-					client.send(message);
-				}
-			});
+			broadcastToRoom(ws.room||"General",message,ws);
 			return;
 		}
 		let data;
@@ -237,6 +256,49 @@ wsServer.on("connection",(ws,req)=>{
 					client.send(JSON.stringify({type:"system",message:`${data.username} joined the chat. Current users: ${userList}`}));
 				}
 			});
+			return;
+		}
+		else if(data.type=="joinRoom"){
+			let targetRoom=data.room;
+			if(!targetRoom||typeof targetRoom!=="string"){
+				ws.send(JSON.stringify({type:"system",message:"Invalid room name."}));
+				return;
+			}
+			targetRoom=targetRoom.trim().substring(0,20);
+			if(!rooms.has(targetRoom)){
+				rooms.set(targetRoom,{name:targetRoom,members:new Set()});
+			}
+			if(ws.room){
+				let oldRoom=rooms.get(ws.room);
+				if(oldRoom){oldRoom.members.delete(ws);}
+			}
+			ws.room=targetRoom;
+			rooms.get(targetRoom).members.add(ws);
+			let roomList=getRoomList();
+			ws.send(JSON.stringify({type:"roomJoined",room:targetRoom,rooms:roomList}));
+			broadcastToRoom(targetRoom,{type:"system",message:`${ws.username} joined ${targetRoom}`},ws);
+			return;
+		}
+		else if(data.type=="createRoom"){
+			let newRoom=data.room;
+			if(!newRoom||typeof newRoom!=="string"){
+				ws.send(JSON.stringify({type:"system",message:"Invalid room name."}));
+				return;
+			}
+			newRoom=newRoom.trim().substring(0,20);
+			if(rooms.has(newRoom)){
+				ws.send(JSON.stringify({type:"system",message:`Room "${newRoom}" already exists.`}));
+				return;
+			}
+			rooms.set(newRoom,{name:newRoom,members:new Set()});
+			let roomList=getRoomList();
+			broadcastOnlineCount();
+			ws.send(JSON.stringify({type:"roomCreated",room:newRoom,rooms:roomList}));
+			return;
+		}
+		else if(data.type=="getRooms"){
+			let roomList=getRoomList();
+			ws.send(JSON.stringify({type:"roomList",rooms:roomList,currentRoom:ws.room}));
 			return;
 		}
 		else if(data.type=="typing"){
@@ -303,11 +365,7 @@ wsServer.on("connection",(ws,req)=>{
 		}
 		else if(data.type=="file-cancel"){
 			const payload={type:"file-cancel",transferId:data.transferId};
-			clients.forEach(client=>{
-				if(client!==ws&&client.readyState===WebSocket.OPEN){
-					client.send(JSON.stringify(payload));
-				}
-			});
+			broadcastToRoom(ws.room||"General",payload,ws);
 			return;
 		}
 		else if(data.type=="image"||data.type=="voice"||data.type=="file-start"||data.type=="file-end"||data.type=="file"){
@@ -318,11 +376,7 @@ wsServer.on("connection",(ws,req)=>{
 				ip:ws.clientIP||"Unknown",
 				timestamp:data.timestamp||new Date().toISOString()
 			};
-			clients.forEach(client=>{
-				if(client.readyState===WebSocket.OPEN){
-					client.send(JSON.stringify(payload));
-				}
-			});
+			broadcastToRoom(ws.room||"General",payload,ws);
 			return;
 		}
 		if(!checkRateAndBan(data.username)){
@@ -332,18 +386,24 @@ wsServer.on("connection",(ws,req)=>{
 		const broadcastMsg={
 			username:data.username,
 			message:data.message,
-			ip:ws.clientIP||"Unknown"
+			ip:ws.clientIP||"Unknown",
+			room:ws.room
 		};
-		clients.forEach(client=>{
-			if(client.readyState===WebSocket.OPEN){
-				client.send(JSON.stringify(broadcastMsg));
-			}
-		});
+		broadcastToRoom(ws.room||"General",broadcastMsg,ws);
 	});
 	ws.on("close",()=>{
 		const index=clients.indexOf(ws);
 		if(index!=-1){
 			clients.splice(index,1);
+			if(ws.room){
+				let room=rooms.get(ws.room);
+				if(room){
+					room.members.delete(ws);
+					if(room.members.size===0&&!defaultRooms.includes(ws.room)){
+						rooms.delete(ws.room);
+					}
+				}
+			}
 			if(ws.username){
 				usernameToWs.delete(ws.username);
 				const userList=getCurrentUsersList();
