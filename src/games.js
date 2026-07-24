@@ -457,6 +457,40 @@ export function processCommand(msg,currentUser,socket,clientRealIP,chatPage,user
         doRandomEasterEgg(showSystemMessageFn,applyGoldBorderFn,updateDeveloperModeFn,()=>{incrementUnlockCount();showSystemMessageFn(`Secret unlock #${unlockCount}. You feel a strange power.`);applyGoldBorderFn();updateDeveloperModeFn();});
         return true;
     }
+    if(msg.startsWith("/poll")){
+        let args=msg.substring(5).trim();
+        if(!args){
+            showSystemMessageFn("Usage: /poll \"Question\" \"Option1\" \"Option2\" ...");
+            return true;
+        }
+        let parts=[];
+        let current="";
+        let inQuote=false;
+        for(let i=0;i<args.length;i++){
+            if(args[i]==='"'){
+                if(inQuote){
+                    if(current.trim())parts.push(current.trim());
+                    current="";
+                    inQuote=false;
+                }
+                else{
+                    inQuote=true;
+                }
+            }
+            else if(inQuote){
+                current+=args[i];
+            }
+        }
+        if(current.trim())parts.push(current.trim());
+        if(parts.length<3){
+            showSystemMessageFn("Usage: /poll \"Question\" \"Option1\" \"Option2\" ...");
+            return true;
+        }
+        if(socket&&socket.readyState===WebSocket.OPEN){
+            socket.send(JSON.stringify({type:"createPoll",question:parts[0],options:parts.slice(1)}));
+        }
+        return true;
+    }
     if(msg==="/chess"){
         if(document.getElementById("chessOverlay")){
             showChatError(chatErrorDiv,"Chess game is already open");
@@ -641,7 +675,7 @@ Shift+Enter - Send message
         return true;
     }
     if(msg==="/help"){
-        let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/2048 - play 2048 game\n/chess - play Chess vs Computer (difficulty selection)\n/nick <newname> - change your username\n/clear [N] - clear all or last N messages\n/ping - measure latency\n/diag - run network diagnostics\n/shortcuts - show keyboard shortcuts\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
+        let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/poll \"Question\" \"Option1\" \"Option2\" - create anonymous poll\n/2048 - play 2048 game\n/chess - play Chess vs Computer (difficulty selection)\n/nick <newname> - change your username\n/clear [N] - clear all or last N messages\n/ping - measure latency\n/diag - run network diagnostics\n/shortcuts - show keyboard shortcuts\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
         showSystemMessageFn(help);
         return true;
     }

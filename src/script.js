@@ -399,6 +399,61 @@ document.addEventListener("DOMContentLoaded",()=>{
             checkScrollPosition(messagesList,scrollBtn,autoScroll);
             return;
         }
+        if(data.type==="pollCreated"||data.type==="pollUpdate"||data.type==="pollClosed"){
+            let li=document.createElement("li");
+            li.id="poll_"+data.id;
+            li.style.cssText="background:var(--background-card);border:1px solid var(--border-input);border-radius:var(--border-radius);padding:0.5rem;margin:0.3rem 0;";
+            let title=document.createElement("div");
+            title.style.cssText="font-weight:600;margin-bottom:0.3rem;color:var(--text-primary);";
+            title.textContent=data.question+(data.createdBy?" (by "+data.createdBy+")":"");
+            li.appendChild(title);
+            let optionsDiv=document.createElement("div");
+            optionsDiv.style.cssText="display:flex;flex-direction:column;gap:0.2rem;";
+            data.options.forEach((opt,i)=>{
+                let optRow=document.createElement("div");
+                optRow.style.cssText="display:flex;align-items:center;gap:0.3rem;";
+                let voteBtn=document.createElement("button");
+                voteBtn.style.cssText="background:var(--button-bg);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:0.2rem 0.5rem;cursor:pointer;color:var(--text-primary);font-size:0.85rem;flex-shrink:0;";
+                voteBtn.textContent=opt.votes;
+                voteBtn.title="Vote";
+                voteBtn.onclick=()=>{
+                    if(socket&&socket.readyState===WebSocket.OPEN){
+                        socket.send(JSON.stringify({type:"vote",pollId:data.id,option:i}));
+                    }
+                };
+                let optText=document.createElement("span");
+                optText.style.cssText="color:var(--text-primary);font-size:0.9rem;";
+                optText.textContent=opt.text;
+                let bar=document.createElement("div");
+                bar.style.cssText="flex:1;height:6px;background:var(--button-bg);border-radius:3px;overflow:hidden;min-width:2rem;";
+                let fill=document.createElement("div");
+                fill.style.cssText="height:100%;background:var(--message-user);transition:width 0.3s;";
+                fill.style.width=data.totalVotes>0?((opt.votes/data.totalVotes)*100)+"%":"0%";
+                bar.appendChild(fill);
+                optRow.appendChild(voteBtn);
+                optRow.appendChild(optText);
+                optRow.appendChild(bar);
+                optionsDiv.appendChild(optRow);
+            });
+            li.appendChild(optionsDiv);
+            let footer=document.createElement("div");
+            footer.style.cssText="font-size:0.75rem;color:var(--text-secondary);margin-top:0.3rem;";
+            footer.textContent=data.totalVotes+" vote"+(data.totalVotes!==1?"s":"");
+            li.appendChild(footer);
+            if(data.type==="pollClosed"){
+                let closedBadge=document.createElement("span");
+                closedBadge.style.cssText="color:var(--error-color);font-weight:600;margin-left:0.3rem;";
+                closedBadge.textContent="[CLOSED]";
+                footer.appendChild(closedBadge);
+            }
+            messagesList.appendChild(li);
+            scrollToBottom(messagesList);
+            checkScrollPosition(messagesList,scrollBtn,autoScroll);
+            return;
+        }
+        if(data.type==="pollList"){
+            return;
+        }
         if(data.type==="private"){
             let time=data.timestamp||getCurrentTime();
             let formatted=formatMarkdown(data.message);
