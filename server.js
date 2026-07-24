@@ -4,8 +4,23 @@ import express from "express";
 import path from "path";
 import {fileURLToPath} from "url";
 import {Filter} from "bad-words";
+import dgram from "dgram";
 const __filename=fileURLToPath(import.meta.url);
 const __dirname=path.dirname(__filename);
+const getLocalIP=()=>{
+	const nets=networkInterfaces();
+	for(const iface of Object.values(nets)){
+		for(const net of iface){
+			if(net.family=="IPv4"&&!net.internal&&net.address!=="127.0.0.1"&&net.address!=="::1"){
+				return net.address;
+			}
+		}
+	}
+	return "localhost";
+};
+const localIP=getLocalIP();
+const portWS=8191;
+const portUI=2047;
 function parseArgs(argv){
 	let serverName=null;
 	for(let i=2;i<argv.length;i++){
@@ -35,20 +50,36 @@ setInterval(()=>{
 	}
 	joinCodeMap.set(joinCode,{ip:localIP,port:portWS,uiPort:portUI,name:serverName});
 },300000);
-const getLocalIP=()=>{
-	const nets=networkInterfaces();
-	for(const iface of Object.values(nets)){
-		for(const net of iface){
-			if(net.family=="IPv4"&&!net.internal&&net.address!=="127.0.0.1"&&net.address!=="::1"){
-				return net.address;
-			}
-		}
-	}
-	return "localhost";
-};
-const localIP=getLocalIP();
-const portWS=8191;
-const portUI=2047;
+const DISCOVERY_ADDRESS="224.0.0.1";
+const DISCOVERY_PORT=9876;
+const DISCOVERY_INTERVAL=2000;
+const DISCOVERY_PACKET=JSON.stringify({
+	type:"local-chat-server",
+	name:serverName,
+	ip:localIP,
+	port:portWS,
+	uiPort:portUI,
+	joinCode:joinCode
+});
+function startDiscovery(){
+	const socket=dgram.createSocket({type:"udp4",reuseAddr:true});
+	socket.bind(DISCOVERY_PORT);
+	socket.on("listening",()=>{
+		socket.addMembership(DISCOVERY_ADDRESS);
+		socket.setBroadcast(true);
+		console.log(`LAN discovery active on ${DISCOVERY_ADDRESS}:${DISCOVERY_PORT}`);
+	});
+	socket.on("error",(err)=>{
+		console.log("Discovery socket error: "+err.message);
+	});
+	const broadcast=()=>{
+		const msg=Buffer.from(DISCOVERY_PACKET);
+		socket.send(msg,0,msg.length,DISCOVERY_PORT,DISCOVERY_ADDRESS);
+	};
+	broadcast();
+	setInterval(broadcast,DISCOVERY_INTERVAL);
+	return socket;
+}
 const app=express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname,"dist"),{
@@ -323,8 +354,10 @@ wsServer.on("connection",(ws,req)=>{
 		}
 	});
 });
+const discoverySocket=startDiscovery();
 process.on("SIGTERM",()=>{
 	console.log("SIGTERM received. Closing server...");
+	discoverySocket.close();
 	wsServer.close(()=>{
 		console.log("WebSocket server closed.");
 		process.exit(0);
@@ -332,6 +365,7 @@ process.on("SIGTERM",()=>{
 });
 process.on("SIGINT",()=>{
 	console.log("SIGINT received. Closing server...");
+	discoverySocket.close();
 	wsServer.close(()=>{
 		console.log("WebSocket server closed.");
 		process.exit(0);
