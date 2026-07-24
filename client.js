@@ -1,15 +1,13 @@
 import express from"express";
 import path from"path";
-import{fileURLToPath}from"url";
 import http from"http";
 import{WebSocket}from"ws";
 import dgram from"dgram";
 import{DISCOVERY_ADDRESS,DISCOVERY_PORT,DISCOVERY_TYPE,PROTOCOL_VERSION}from"./src/protocol/constants.js";
-const __filename=fileURLToPath(import.meta.url);
-const __dirname=path.dirname(__filename);
+const scriptDir=path.dirname(process.argv[1]||".");
 function getDistDir(){
 	if(path.basename(process.argv[0]||"")==="node"||path.basename(process.argv[0]||"")==="node.exe"){
-		return path.join(__dirname,"dist");
+		return path.join(scriptDir,"dist");
 	}
 	return path.join(path.dirname(process.execPath),"dist");
 }
