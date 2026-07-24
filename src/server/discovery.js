@@ -23,6 +23,7 @@ export function createDiscoverySocket(name,localIP,wsPort,joinCode,getStats){
 	const broadcast=()=>{
 		const msg=Buffer.from(buildPacket());
 		socket.send(msg,0,msg.length,DISCOVERY_PORT,DISCOVERY_ADDRESS);
+		socket.send(msg,0,msg.length,DISCOVERY_PORT,"255.255.255.255");
 	};
 	broadcast();
 	const interval=setInterval(broadcast,DISCOVERY_INTERVAL);
