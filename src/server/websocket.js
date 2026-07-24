@@ -219,7 +219,14 @@ export function createWebSocketServer(portWS,localIP){
 		if(generalRoom){generalRoom.members.add(ws);}
 		ws.send(JSON.stringify({type:MSG.SYSTEM,message:`Your IP is ${clientIP}`}));
 		ws.on("message",(message,isBinary)=>{
-			if(isBinary){broadcastToRoom(ws.room||"General",message,ws);return;}
+			if(isBinary){
+				clients.forEach(client=>{
+					if(client!==ws&&client.readyState===WebSocket.OPEN&&client.room===(ws.room||"General")){
+						client.send(message);
+					}
+				});
+				return;
+			}
 			let data;
 			try{data=JSON.parse(message);}catch(err){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Invalid JSON received."}));return;}
 			handleMessage(ws,data);
