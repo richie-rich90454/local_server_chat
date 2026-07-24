@@ -569,13 +569,15 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
     function connect(){
         if(reconnectTimer){clearTimeout(reconnectTimer);}
+        let wsHost=clientMode&&remoteHost?remoteHost:window.location.hostname;
+        let wsPort=clientMode&&remotePort?remotePort:defaultPort;
         let handlers={
             onMessage: onWebSocketMessage,
             onBinary: (arrayBuffer)=>{
                 handleBinaryChunk(arrayBuffer,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv);
             },
             onOpen: ()=>{
-                console.log("WebSocket connected");
+                console.log("WebSocket connected to "+wsHost+":"+wsPort);
                 reconnectAttempts=0;
                 socket.send(JSON.stringify({type:"join",username:currentUser}));
                 socket.send(JSON.stringify({type:"getRooms"}));
@@ -599,7 +601,16 @@ document.addEventListener("DOMContentLoaded",()=>{
             },
             onError: (e)=>console.error(e)
         };
-        let ws=connectWebSocket(defaultPort,handlers);
+        let wsUrl=`ws://${wsHost}:${wsPort}`;
+        let ws=new WebSocket(wsUrl);
+        ws.binaryType="arraybuffer";
+        ws.onopen=()=>{if(handlers.onOpen)handlers.onOpen();};
+        ws.onmessage=(event)=>{
+            if(event.data instanceof ArrayBuffer){if(handlers.onBinary)handlers.onBinary(event.data);}
+            else{try{let data=JSON.parse(event.data);if(handlers.onMessage)handlers.onMessage(data);}catch(e){}}
+        };
+        ws.onerror=(e)=>{if(handlers.onError)handlers.onError(e);};
+        ws.onclose=()=>{if(handlers.onClose)handlers.onClose();};
         socket=ws;
     }
     fetch("/server-info").then(r=>r.json()).then(info=>{
@@ -628,6 +639,65 @@ document.addEventListener("DOMContentLoaded",()=>{
             QRCode.toCanvas(qrCanvas,url,{width:128,margin:1,errorCorrectionLevel:"L"}).catch(()=>{});
         }
     }).catch(()=>{});
+    let clientMode=false;
+    let remoteHost=null;
+    let remotePort=8191;
+    fetch("/client-info").then(r=>r.json()).then(info=>{
+        if(info.mode==="client"){
+            clientMode=true;
+            document.getElementById("discoveryPage").style.display="block";
+            document.getElementById("username-wrapper").style.display="none";
+            document.getElementById("userIp").style.display="none";
+            document.getElementById("joinChat").style.display="none";
+            document.getElementById("loginHeading").textContent="Local Server Chat";
+            let evtSource=new EventSource("/discovery/events");
+            evtSource.onmessage=(e)=>{
+                let data=JSON.parse(e.data);
+                updateServerList(data.servers);
+            };
+        }
+    }).catch(()=>{});
+    function updateServerList(servers){
+        let list=document.getElementById("serverList");
+        let noServers=document.getElementById("noServers");
+        if(!list)return;
+        if(servers.length===0){
+            noServers.style.display="block";
+            return;
+        }
+        noServers.style.display="none";
+        list.innerHTML="";
+        servers.forEach(s=>{
+            let item=document.createElement("div");
+            item.style.cssText="padding:0.5rem;border-bottom:1px solid var(--border-card);cursor:pointer;display:flex;justify-content:space-between;align-items:center;";
+            item.innerHTML=`<div><div style="font-weight:500;color:var(--text-primary);">${escapeHtml(s.name)}</div><div style="font-size:0.75rem;color:var(--text-secondary);">${s.ip}:${s.port} - ${s.users||0} users</div></div><input type="button" value="Join" style="width:auto;padding:0.2rem 0.8rem;">`;
+            item.querySelector("input").onclick=(e)=>{
+                e.stopPropagation();
+                selectServer(s.ip,s.port);
+            };
+            item.onclick=()=>selectServer(s.ip,s.port);
+            list.appendChild(item);
+        });
+    }
+    function selectServer(host,port){
+        remoteHost=host;
+        remotePort=port;
+        document.getElementById("discoveryPage").style.display="none";
+        document.getElementById("username-wrapper").style.display="flex";
+        document.getElementById("userIp").style.display="block";
+        document.getElementById("joinChat").style.display="block";
+        document.getElementById("loginHeading").textContent="Join Chat";
+        userIP.value=`Server: ${host}:${port}`;
+    }
+    let manualConnectBtn=document.getElementById("manualConnect");
+    if(manualConnectBtn){
+        manualConnectBtn.onclick=()=>{
+            let host=document.getElementById("manualHost").value.trim();
+            let port=parseInt(document.getElementById("manualPort").value)||8191;
+            if(!host){showChatError(chatErrorDiv,"Enter a server IP.");return;}
+            selectServer(host,port);
+        };
+    }
     let joinCodeBtn=document.getElementById("joinCodeBtn");
     let joinCodeInput=document.getElementById("joinCodeInput");
     if(joinCodeBtn&&joinCodeInput){

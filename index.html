@@ -21,7 +21,22 @@
 	</head>
 	<body>
 		<div id="login">
-			<h2 id="loginHeading">Locally Hosted Chat Application Login</h2>
+			<h2 id="loginHeading">Local Server Chat</h2>
+			<div id="discoveryPage" style="display:none;">
+				<div style="margin-bottom:1rem;">
+					<div style="font-weight:600;margin-bottom:0.5rem;color:var(--text-primary);">Available Servers</div>
+					<div id="serverList" style="border:1px solid var(--border-card);border-radius:var(--border-radius);padding:0.5rem;min-height:3rem;max-height:15rem;overflow-y:auto;background:var(--background-card);"></div>
+					<div id="noServers" style="color:var(--text-secondary);font-size:0.85rem;font-style:italic;">Searching...</div>
+				</div>
+				<div style="border-top:1px solid var(--border-card);padding-top:0.5rem;">
+					<div style="font-weight:600;margin-bottom:0.5rem;color:var(--text-primary);">Manual Connection</div>
+					<div style="display:flex;gap:0.3rem;align-items:center;">
+						<input type="text" id="manualHost" placeholder="Server IP" style="flex:2;margin-bottom:0;" aria-label="Server IP">
+						<input type="text" id="manualPort" value="8191" style="width:5rem;margin-bottom:0;" aria-label="Port">
+						<input type="button" id="manualConnect" value="Connect" style="width:auto;flex-shrink:0;" aria-label="Connect">
+					</div>
+				</div>
+			</div>
 			<div id="serverInfo" style="display:none;">
 				<div id="serverName" style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem;color:var(--text-primary);"></div>
 				<div id="joinCodeDisplay" style="margin-bottom:0.5rem;">
