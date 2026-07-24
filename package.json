@@ -25,8 +25,9 @@
         "bundle-client": "esbuild client.js --bundle --platform=node --format=cjs --outfile=client-bundle.cjs",
         "sea": "node --experimental-sea-config sea-config.json",
         "sea-client": "node --experimental-sea-config sea-config-client.json",
-        "package": "vite build && npm run bundle && npm run sea && node scripts/inject-sea.js",
-        "package-client": "vite build && npm run bundle-client && npm run sea-client && node scripts/inject-sea.js --client"
+        "package-server": "vite build && npm run bundle && npm run sea && node scripts/inject-sea.js",
+        "package-client": "vite build && npm run bundle-client && npm run sea-client && node scripts/inject-sea.js --client",
+        "package": "npm run package-server && npm run package-client"
     },
     "keywords": [
         "WebSocket",
