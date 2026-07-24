@@ -606,8 +606,16 @@ document.addEventListener("DOMContentLoaded",()=>{
         ws.binaryType="arraybuffer";
         ws.onopen=()=>{if(handlers.onOpen)handlers.onOpen();};
         ws.onmessage=(event)=>{
-            if(event.data instanceof ArrayBuffer){if(handlers.onBinary)handlers.onBinary(event.data);}
-            else{try{let data=JSON.parse(event.data);if(handlers.onMessage)handlers.onMessage(data);}catch(e){}}
+            if(event.data instanceof ArrayBuffer){
+                if(handlers.onBinary)handlers.onBinary(event.data);
+            }
+            else if(typeof Blob!=="undefined"&&event.data instanceof Blob){
+                event.data.arrayBuffer().then(buf=>{if(handlers.onBinary)handlers.onBinary(buf);});
+            }
+            else{
+                let str=typeof event.data==="string"?event.data:(event.data&&event.data.toString?event.data.toString():null);
+                if(str){try{let data=JSON.parse(str);if(handlers.onMessage)handlers.onMessage(data);}catch(e){}}
+            }
         };
         ws.onerror=(e)=>{if(handlers.onError)handlers.onError(e);};
         ws.onclose=()=>{if(handlers.onClose)handlers.onClose();};
