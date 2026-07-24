@@ -136,3 +136,6 @@ dist
 .pnp.*
 .opencode
 docs
+server-bundle.cjs
+sea-prep.blob
+release/
