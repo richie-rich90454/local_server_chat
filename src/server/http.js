@@ -3,7 +3,8 @@ import path from"path";
 import{fileURLToPath}from"url";
 import{Filter}from"bad-words";
 import{PROTOCOL_VERSION}from"../protocol/constants.js";
-const fileUrl=typeof import.meta!=="undefined"&&import.meta.url?fileURLToPath(import.meta.url):typeof __filename!=="undefined"?__filename:".";
+// In ESM: import.meta.url works. In SEA CJS bundle: falls back to __filename.
+const fileUrl=import.meta.url?fileURLToPath(import.meta.url):__filename;
 const dirName=path.dirname(fileUrl);
 export function createHttpServer(localIP,portUI,portWS,serverName,joinCode,joinCodeMap){
 	const app=express();

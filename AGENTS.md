@@ -24,21 +24,33 @@ No lint, typecheck, or test commands exist. `npm test` is a stub that exits 1.
 
 ## Architecture
 
-- `server.js` — single-file Node server (Express + WebSocket + UDP discovery). Serves `dist/` in production. Manages rooms, polls, stats.
-- `src/script.js` — client entry point. Imports from sibling modules.
-- `src/websocket.js` — thin WebSocket wrapper; connects to `ws://<hostname>:8191`.
-- `src/games.js` — 2048, chess, and all slash commands (`/help`, `/poll`, `/stats`, `/diag`, etc.).
-- `src/file-handler.js` — file transfer via binary WebSocket chunks (5 GB max, 16 MB chunks).
-- `src/identicon.js` — deterministic geometric SVG identicons from usernames.
-- `src/ui-helpers.js` — modal, export, theme, scroll utilities.
-- `src/highlight-config.js` — syntax highlighting for ~50 languages + markdown formatting.
-- `vite.config.js` — builds to `dist/`, uses `vite-plugin-html`, Lightning CSS, rolldown code splitting.
+- `server.js` — entry point, wires server modules together.
+- `src/server/args.js` — CLI flag parser (`--name`, `--no-http`).
+- `src/server/discovery.js` — UDP multicast LAN broadcast.
+- `src/server/http.js` — Express static files + REST endpoints.
+- `src/server/websocket.js` — WebSocket server, rooms, polls, stats.
+- `src/protocol/constants.js` — shared message types, ports, limits.
+- `src/protocol/messages.js` — message builder functions.
+- `src/client/connection.js` — browser WebSocket connection manager.
+- `src/client/discovery.js` — HTTP-based server discovery.
+- `src/client/renderer.js` — protocol message rendering.
+- `src/script.js` — browser client entry point.
+- `src/games.js` — 2048, chess, slash commands.
+- `src/file-handler.js` — binary file transfer.
+- `src/identicon.js` — deterministic SVG avatars.
+- `src/ui-helpers.js` — modal, export, theme utilities.
+- `src/highlight-config.js` — syntax highlighting + markdown.
+- `LocalServerChatClient.js` — native TUI client.
+- `vite.config.js` — builds to `dist/`.
+- `sea-config.json` — Node.js SEA config for standalone exe.
+- `scripts/inject-sea.js` — blob injection into node executable.
 
 ## Runtime Arguments
 
 ```
 node server.js                          # Private server (default)
 node server.js --name "Physics Class"   # Discoverable server with name
+node server.js --no-http                # Headless (WebSocket only)
 ```
 
 Providing `--name` enables LAN discovery via UDP multicast. Join code generated automatically.
@@ -57,6 +69,7 @@ Providing `--name` enables LAN discovery via UDP multicast. Join code generated 
 
 - `dist/` is gitignored. Production requires `npm run build` before `node server.js`.
 - ESM throughout (`"type": "module"` in package.json, `import` syntax everywhere).
+- SEA build uses esbuild to bundle ESM → CJS as a build step. The CJS output is a build artifact, not source code. Node.js SEA requires CJS internally — there is no ESM SEA mode.
 - WebSocket runs on `host: "::"` (IPv6 dual-stack). Client connects to whatever `window.location.hostname` is.
 - No auth. Anyone on the LAN can join. Messages are plain text.
 - Rate limit: 3 msg/sec, 5s ban on exceed.
