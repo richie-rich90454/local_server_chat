@@ -174,7 +174,7 @@ export function createWebSocketServer(portWS,localIP){
 				broadcastToRoom(ws.room||"General",{type:MSG.FILE_CANCEL,transferId:data.transferId},ws);
 				break;
 			}
-			case MSG.IMAGE:case MSG.VOICE:case MSG.FILE_START:case MSG.FILE_END:case MSG.FILE:{
+			case MSG.IMAGE:case MSG.VOICE:case MSG.FILE_START:case MSG.FILE_END:{
 				if(data.type===MSG.FILE_END){stats.filesTransferred++;}
 				const{type,...rest}=data;
 				broadcastToRoom(ws.room||"General",{type,...rest,ip:ws.clientIP||"Unknown",timestamp:data.timestamp||new Date().toISOString()},ws);
