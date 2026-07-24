@@ -18,6 +18,7 @@
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
         "start": "node server.js",
+        "client": "node LocalServerChatClient.js",
         "dev": "vite dev",
         "build": "vite build",
         "package": "vite build && pkg . --targets node18-win-x64,node18-linux-x64,node18-macos-x64 --output LocalServerChat"
