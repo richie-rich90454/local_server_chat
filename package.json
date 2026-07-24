@@ -11,6 +11,7 @@
         "highlightjs-cobol": "^0.3.3",
         "highlightjs-graphql": "^1.0.2",
         "highlightjs-zig": "^1.0.2",
+        "qrcode": "^1.5.4",
         "ws": "^8.21.1"
     },
     "main": "server.js",

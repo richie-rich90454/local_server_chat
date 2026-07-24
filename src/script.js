@@ -3,6 +3,7 @@ import {createModal, showChatError, shakeElement, getCurrentTime, scrollToBottom
 import {connectWebSocket} from "./websocket.js";
 import {create2048Game, createChessGame, processCommand, updateDeveloperMode, applyGoldBorder, showSystemMessage, doRandomEasterEgg, getUnlockCount, incrementUnlockCount} from "./games.js";
 import {initFileHandlers, handleFileStart, handleBinaryChunk, handleFileEnd, handleFileCancel} from "./file-handler.js";
+import QRCode from "qrcode";
 document.addEventListener("DOMContentLoaded",()=>{
     let headerControls=document.getElementById("headerControls");
     if(headerControls&&!document.getElementById("exportFormat")){
@@ -439,7 +440,52 @@ document.addEventListener("DOMContentLoaded",()=>{
                 setTimeout(()=>{
                     if(socket&&socket.readyState===WebSocket.OPEN){
                         socket.send(JSON.stringify({type:"getUsers"}));
-                    }
+    }
+    fetch("/server-info").then(r=>r.json()).then(info=>{
+        let serverInfoDiv=document.getElementById("serverInfo");
+        let serverNameEl=document.getElementById("serverName");
+        let joinCodeValue=document.getElementById("joinCodeValue");
+        if(info.name&&serverNameEl){
+            serverNameEl.textContent=info.name;
+        }
+        if(info.joinCode&&joinCodeValue){
+            joinCodeValue.textContent=info.joinCode;
+        }
+        if(serverInfoDiv){
+            serverInfoDiv.style.display="block";
+        }
+        let qrCanvas=document.getElementById("qrCanvas");
+        if(qrCanvas&&info.ip){
+            let url=`http://${info.ip}:${info.uiPort||2047}`;
+            QRCode.toCanvas(qrCanvas,url,{width:128,margin:1,errorCorrectionLevel:"L"}).catch(()=>{});
+        }
+    }).catch(()=>{});
+    let joinCodeBtn=document.getElementById("joinCodeBtn");
+    let joinCodeInput=document.getElementById("joinCodeInput");
+    if(joinCodeBtn&&joinCodeInput){
+        joinCodeBtn.onclick=()=>{
+            let code=joinCodeInput.value.trim().toUpperCase();
+            if(code.length!==4){
+                showChatError(chatErrorDiv,"Enter a 4-character join code.");
+                shakeElement(joinCodeInput);
+                return;
+            }
+            fetch("/join-code/"+code).then(r=>r.json()).then(result=>{
+                if(result.found){
+                    window.location.href=`http://${result.ip}:${result.uiPort||2047}`;
+                }
+                else{
+                    showChatError(chatErrorDiv,"Server not found. Check the code and try again.");
+                    shakeElement(joinCodeInput);
+                }
+            }).catch(()=>{
+                showChatError(chatErrorDiv,"Could not reach server.");
+            });
+        };
+        joinCodeInput.addEventListener("keypress",(e)=>{
+            if(e.key==="Enter"){joinCodeBtn.click();}
+        });
+    }
                 },500);
             },
             onClose: ()=>{

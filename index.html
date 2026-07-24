@@ -22,12 +22,28 @@
 	<body>
 		<div id="login">
 			<h2 id="loginHeading">Locally Hosted Chat Application Login</h2>
+			<div id="serverInfo" style="display:none;">
+				<div id="serverName" style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem;color:var(--text-primary);"></div>
+				<div id="joinCodeDisplay" style="margin-bottom:0.5rem;">
+					<span style="font-size:0.85rem;color:var(--text-secondary);">Join Code:</span>
+					<span id="joinCodeValue" style="font-family:'Noto Sans Mono',monospace;font-size:1.2rem;font-weight:700;letter-spacing:0.15rem;margin-left:0.3rem;color:var(--text-primary);"></span>
+				</div>
+				<canvas id="qrCanvas" width="128" height="128" style="margin:0 auto 0.5rem;display:block;border:1px solid var(--border-card);border-radius:var(--border-radius);"></canvas>
+				<div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.5rem;">Scan to join</div>
+			</div>
 			<div id="username-wrapper">
 				<input type="text" id="username" placeholder="Chat Username" autocomplete="off" aria-label="Username">
 				<input type="button" id="genUsername" value="Generate a Five Character Username" aria-label="Generate random username">
 			</div>
 			<input type="text" id="userIp" placeholder="IP not Detected" disabled autocomplete="off" aria-label="Local IP Address">
 			<input type="button" id="joinChat" value="Join the chat" aria-label="Join chat">
+			<div id="altJoinSection" style="margin-top:0.5rem;font-size:0.8rem;">
+				<span style="color:var(--text-secondary);">Or join with code:</span>
+				<div style="display:flex;gap:0.3rem;margin-top:0.3rem;">
+					<input type="text" id="joinCodeInput" placeholder="Enter 4-char code" maxlength="4" style="width:8rem;text-transform:uppercase;font-family:'Noto Sans Mono',monospace;letter-spacing:0.1rem;margin-bottom:0;" aria-label="Join code">
+					<input type="button" id="joinCodeBtn" value="Go" style="width:3rem;flex-shrink:0;" aria-label="Join with code">
+				</div>
+			</div>
 			<div id="login-error" role="alert" aria-live="polite"></div>
 		</div>
 		<div id="chatUI" style="display: none;">
