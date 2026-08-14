@@ -14,8 +14,8 @@ export function getFileTypeCategory(mimeType){
     if(mimeType.startsWith("image/"))return"image";
     if(mimeType==="application/pdf")return"pdf";
     if(mimeType.includes("zip")||mimeType.includes("rar")||mimeType.includes("7z"))return"archive";
-    if(mimeType.startsWith("text/")||mimeType.includes("json")||mimeType.includes("xml"))return"document";
     if(mimeType.includes("javascript")||mimeType.includes("html")||mimeType.includes("css"))return"code";
+    if(mimeType.startsWith("text/")||mimeType.includes("json")||mimeType.includes("xml"))return"document";
     if(mimeType.startsWith("video/"))return"video";
     if(mimeType.startsWith("audio/"))return"audio";
     return"other";
