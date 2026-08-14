@@ -195,6 +195,9 @@ pre code.hljs{
 }
 code{
     font-family:"Noto Sans Mono", monospace;
+    background:var(--button-bg);
+    padding:.05rem .3rem;
+    border-radius:3px;
 }
 #username-wrapper{
     display:flex;
@@ -956,12 +959,27 @@ body[data-theme="dark"] #chessBoard div{
     text-align:right;
 }
 #connStatus{
-    font-size:0.75rem;
-    color:var(--text-secondary);
+    height:var(--button-height);
+    padding:0 .6rem;
+    font-size:var(--button-font-size);
+    background-color:var(--button-bg);
     border:1px solid var(--border-card);
     border-radius:var(--border-radius);
-    padding:0.15rem .5rem;
+    color:var(--text-primary);
+    line-height:normal;
+    display:inline-flex;
+    align-items:center;
     white-space:nowrap;
+    box-sizing:border-box;
+    margin:0;
+}
+#connStatus.connected{
+    color:#2ecc71;
+    font-weight:500;
+}
+#connStatus.reconnecting{
+    color:#e67e22;
+    font-weight:500;
 }
 #connStatus.connected{
     color:#2ecc71;
@@ -1036,6 +1054,7 @@ body.reduce-motion *::after{
 }
 .markdown-preview-pane{
     background:var(--background-card);
+    color:var(--text-primary);
     border:1px solid var(--border-card);
     border-radius:var(--border-radius);
     padding:.4rem .6rem;
@@ -1044,6 +1063,21 @@ body.reduce-motion *::after{
     overflow-y:auto;
     font-size:.9rem;
     white-space:pre-wrap;
+}
+.markdown-preview-pane code{
+    background:var(--button-bg);
+    color:var(--text-primary);
+    padding:.05rem .3rem;
+    border-radius:3px;
+}
+.markdown-preview-pane pre code.hljs{
+    background:var(--button-bg);
+}
+.markdown-preview-pane table{
+    color:var(--text-primary);
+}
+.markdown-preview-pane .code-block-container{
+    background:var(--background-card);
 }
 input[type="checkbox"]{
     -webkit-appearance:auto;
