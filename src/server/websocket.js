@@ -169,12 +169,12 @@ export function createWebSocketServer(portWS,localIP){
 			}
 			case MSG.PRIVATE:{
 				if(!ws.username){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Join first before sending private messages."}));return;}
-				if(!data.target||!data.message){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Invalid private message."}));return;}
+				if(!data.target||(!data.message&&!data.ct)){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Invalid private message."}));return;}
 				if(!checkRateAndBan(ws.username)){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"You are temporarily banned for spamming."}));return;}
 				const targetWs=usernameToWs.get(data.target);
 				if(!targetWs||targetWs.readyState!==WebSocket.OPEN){ws.send(JSON.stringify({type:MSG.SYSTEM,message:`User "${data.target}" is not online.`}));return;}
-				targetWs.send(JSON.stringify({type:MSG.PRIVATE,from:ws.username,message:data.message,ip:ws.clientIP||"Unknown",timestamp:data.timestamp}));
-				ws.send(JSON.stringify({type:MSG.PRIVATE,self:true,target:data.target,from:ws.username,message:data.message,ip:ws.clientIP||"Unknown",timestamp:data.timestamp}));
+				targetWs.send(JSON.stringify({type:MSG.PRIVATE,from:ws.username,message:data.message,enc:data.enc,nonce:data.nonce,ct:data.ct,ip:ws.clientIP||"Unknown",timestamp:data.timestamp}));
+				ws.send(JSON.stringify({type:MSG.PRIVATE,self:true,target:data.target,from:ws.username,message:data.message,enc:data.enc,nonce:data.nonce,ct:data.ct,ip:ws.clientIP||"Unknown",timestamp:data.timestamp}));
 				break;
 			}
 			case MSG.NICK:{
@@ -212,10 +212,10 @@ export function createWebSocketServer(portWS,localIP){
 			}
 			default:{
 				if(!ws.username){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Join first before sending messages."}));return;}
-				if(!data.message){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Message cannot be empty."}));return;}
+				if(!data.message&&!data.enc){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Message cannot be empty."}));return;}
 				if(!checkRateAndBan(ws.username)){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"You are temporarily banned."}));return;}
 				recordMessage();
-				const broadcastMsg={username:ws.username,message:data.message,ip:ws.clientIP||"Unknown",room:ws.room};
+				const broadcastMsg={username:ws.username,message:data.message,ip:ws.clientIP||"Unknown",room:ws.room,enc:data.enc,nonce:data.nonce,ct:data.ct};
 				const room=rooms.get(ws.room||"General");
 				if(room){
 					clients.forEach(client=>{
