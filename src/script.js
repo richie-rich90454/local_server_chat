@@ -5,6 +5,7 @@ import {create2048Game, createChessGame, processCommand, updateDeveloperMode, ap
 import {initFileHandlers, handleFileStart, handleBinaryChunk, handleFileEnd, handleFileCancel} from "./file-handler.js";
 import QRCode from "qrcode";
 import {generateIdenticon} from "./identicon.js";
+import "./font-preload.css";
 document.addEventListener("DOMContentLoaded",()=>{
     let headerControls=document.getElementById("headerControls");
     if(headerControls&&!document.getElementById("exportFormat")){
