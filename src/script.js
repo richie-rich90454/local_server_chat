@@ -697,6 +697,20 @@ document.addEventListener("DOMContentLoaded",()=>{
         document.getElementById("joinChat").style.display="block";
         document.getElementById("loginHeading").textContent="Join Chat";
         userIP.value=`Server: ${host}:${port}`;
+        fetch("/connect",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({ip:host,port:port})
+        }).then(r=>r.json()).then(result=>{
+            if(result&&result.ok){
+                userIP.value=`Connected to ${host}:${port}`;
+            }
+            else{
+                showChatError(chatErrorDiv,`Cannot reach server ${host}:${port}.`);
+            }
+        }).catch(()=>{
+            showChatError(chatErrorDiv,`Cannot reach server ${host}:${port}.`);
+        });
     }
     let manualConnectBtn=document.getElementById("manualConnect");
     if(manualConnectBtn){
