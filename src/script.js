@@ -1,6 +1,5 @@
 import {hljs, escapeHtml, formatMarkdown, highlightMentions} from "./highlight-config.js";
 import {createModal, showChatError, shakeElement, getCurrentTime, scrollToBottom, checkScrollPosition, updateTypingIndicatorUI, wrapSelection, convertToWebP, insertReplyQuote, insertForwardToPrivate, exportChatLog, applyTheme, getSystemTheme, setHighlightTheme} from "./ui-helpers.js";
-import {connectWebSocket} from "./websocket.js";
 import {create2048Game, createChessGame, processCommand, updateDeveloperMode, applyGoldBorder, showSystemMessage, doRandomEasterEgg, getUnlockCount, incrementUnlockCount} from "./games.js";
 import {initFileHandlers, handleFileStart, handleBinaryChunk, handleFileEnd, handleFileCancel, sendFileChunked, createFileMessageHTML} from "./file-handler.js";
 import QRCode from "qrcode";
