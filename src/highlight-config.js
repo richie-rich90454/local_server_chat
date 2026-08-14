@@ -106,16 +106,22 @@ hljsDefineZig(hljs);
 hljs.registerLanguage("cobol", hljsDefineCobol);
 export { hljs };
 export function escapeHtml(str){
-    return str.replace(/[&<>]/g,function(m){
+    return String(str==null?"":str).replace(/[&<>"']/g,function(m){
         if(m=="&"){return "&amp;";}
         if(m=="<"){return "&lt;";}
         if(m==">"){return "&gt;";}
-        return m;
+        if(m=='"'){return "&quot;";}
+        return "&#39;";
     });
 }
 export function formatMarkdown(text){
     let codeBlocks=[];
     let withoutCode=text.replace(/^[ \t]*```(\w*)\s*\n([\s\S]*?)\n[ \t]*```/gm,function(match,lang,code){
+        let idx=codeBlocks.length;
+        codeBlocks.push({lang:lang||"",code});
+        return `__CODEBLOCK_${idx}__`;
+    });
+    withoutCode=withoutCode.replace(/^[ \t]*```([\w+-]*)[ \t]*([^\n]*?)```[ \t]*$/gm,function(match,lang,code){
         let idx=codeBlocks.length;
         codeBlocks.push({lang:lang||"",code});
         return `__CODEBLOCK_${idx}__`;
