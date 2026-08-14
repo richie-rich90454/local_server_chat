@@ -57,15 +57,43 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
     let currentRoom="General";
     let roomSelector=null;
+    let sentCount=0;
+    let receivedCount=0;
+    let connectedAt=0;
+    let draftTimer=null;
+    let savedDraft=localStorage.getItem("chatDraft");
+    if(savedDraft){
+        userMessage.value=savedDraft;
+    }
+    const EMOJI_MAP={
+        smile:"😀",grin:"😁",laugh:"😂",joy:"😂",wink:"😉",blush:"😊",cool:"😎",thinking:"🤔",sad:"😢",cry:"😭",angry:"😠",heart:"❤️",love:"😍",thumbsup:"👍",ok:"👌",clap:"👏",fire:"🔥",star:"⭐",eyes:"👀",party:"🎉",shrug:"🤷",pray:"🙏",wave:"👋",rocket:"🚀",bug:"🐛",coffee:"☕",pizza:"🍕",check:"✅",x:"❌",warning:"⚠️"
+    };
+    function applyEmojiShortcuts(text){
+        return text.replace(/:([a-z0-9_]+):/g,function(match,name){
+            let snippets=prefs.snippets||{};
+            if(snippets[name]!==undefined)return snippets[name];
+            return EMOJI_MAP[name]||match;
+        });
+    }
+    function updateSessionStats(){
+        let el=document.getElementById("sessionStats");
+        if(!el)return;
+        let up="not connected";
+        if(connectedAt){
+            let sec=Math.floor((Date.now()-connectedAt)/1000);
+            up=Math.floor(sec/3600)+"h "+Math.floor((sec%3600)/60)+"m "+sec%60+"s";
+        }
+        el.textContent="Sent: "+sentCount+" | Received: "+receivedCount+" | Connected: "+up;
+    }
     let prefs=loadPrefs();
     let chatSearchEl=document.getElementById("chatSearch");
     function loadPrefs(){
         try{
             let saved=JSON.parse(localStorage.getItem("chatPrefs")||"{}");
-            return Object.assign({sound:true,dndUntil:0,density:"comfortable",focusMode:false,reduceMotion:false,wrapCode:false,textSize:"normal",accent:"",lang:"en",e2e:false,e2ePass:"",ignoredUsers:[],blockedWords:[]},saved);
+            return Object.assign({sound:true,dndUntil:0,density:"comfortable",focusMode:false,reduceMotion:false,wrapCode:false,textSize:"normal",accent:"",lang:"en",e2e:false,e2ePass:"",ignoredUsers:[],blockedWords:[],snippets:{}},saved);
         }
         catch(e){
-            return{sound:true,dndUntil:0,density:"comfortable",focusMode:false,reduceMotion:false,wrapCode:false,textSize:"normal",accent:"",lang:"en",e2e:false,e2ePass:"",ignoredUsers:[],blockedWords:[]};
+            return{sound:true,dndUntil:0,density:"comfortable",focusMode:false,reduceMotion:false,wrapCode:false,textSize:"normal",accent:"",lang:"en",e2e:false,e2ePass:"",ignoredUsers:[],blockedWords:[],snippets:{}};
         }
     }
     function savePrefs(){
@@ -198,6 +226,8 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
     function onIncomingMessage(data){
         if(!data||data.username===currentUser||data.username==="Anonymous")return;
+        receivedCount++;
+        updateSessionStats();
         if(document.hidden){
             bumpTitle();
             notifyMessage(data);
@@ -355,6 +385,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         overlay.appendChild(box);
         overlay.addEventListener("click",(e)=>{if(e.target===overlay){closeSettings();}});
         document.body.appendChild(overlay);
+        updateSessionStats();
         settingsOverlay=overlay;
     }
 
@@ -608,12 +639,14 @@ document.addEventListener("DOMContentLoaded",()=>{
         else{
             let priv=parsePrivateMessage(message);
             if(priv){
-                socket.send(JSON.stringify({type:"private",username:currentUser,target:priv.target,message:priv.content,ip:clientRealIP,timestamp:getCurrentTime()}));
+                socket.send(JSON.stringify({type:"private",username:currentUser,target:priv.target,message:applyEmojiShortcuts(priv.content),ip:clientRealIP,timestamp:getCurrentTime()}));
             }
             else{
-                socket.send(JSON.stringify({username:currentUser,message:message,ip:clientRealIP}));
+                socket.send(JSON.stringify({username:currentUser,message:applyEmojiShortcuts(message),ip:clientRealIP}));
             }
         }
+        sentCount++;
+        updateSessionStats();
         return true;
     }
     function handleSystemMessage(message){
@@ -966,6 +999,8 @@ document.addEventListener("DOMContentLoaded",()=>{
             onOpen: ()=>{
                 console.log("WebSocket connected to "+wsHost+":"+wsPort);
                 setConnStatus("Connected","connected");
+                connectedAt=Date.now();
+                updateSessionStats();
                 reconnectAttempts=0;
                 socket.send(JSON.stringify({type:"join",username:currentUser}));
                 socket.send(JSON.stringify({type:"getRooms"}));
@@ -1225,12 +1260,59 @@ document.addEventListener("DOMContentLoaded",()=>{
     function sendMessage(){
         let msg=userMessage.value.trim();
         if(!msg){return;}
+        if(msg.startsWith("/snippet ")){
+            handleSnippetCommand(msg);
+            return;
+        }
         let handled=processCommand(msg,currentUser,socket,clientRealIP,chatPage,userMessage,chatErrorDiv,messagesList,showSystemMessageWithSocket,applyGoldBorderWrapper,updateDeveloperModeWrapper);
         if(handled){
             userMessage.value="";
+            clearDraft();
             return;
         }
-        if(sendMessageContent(msg)){userMessage.value="";}
+        if(sendMessageContent(msg)){
+            userMessage.value="";
+            clearDraft();
+        }
+    }
+    function handleSnippetCommand(msg){
+        let parts=msg.split(" ");
+        let cmd=parts[1];
+        let snippets=prefs.snippets=prefs.snippets||{};
+        if(cmd==="add"&&parts.length>=4){
+            let name=parts[2];
+            let text=msg.substring(msg.indexOf(parts[3]));
+            snippets[name]=text;
+            savePrefs();
+            showChatError(chatErrorDiv,"Snippet '"+name+"' saved.");
+            userMessage.value="";
+            clearDraft();
+            return;
+        }
+        else if(cmd==="del"&&parts[2]){
+            delete snippets[parts[2]];
+            savePrefs();
+            showChatError(chatErrorDiv,"Snippet '"+parts[2]+"' deleted.");
+            userMessage.value="";
+            clearDraft();
+            return;
+        }
+        else if(cmd==="list"){
+            let names=Object.keys(snippets);
+            showSystemMessageWithSocket(names.length?"Snippets: "+names.join(", "):"No snippets saved.");
+            userMessage.value="";
+            clearDraft();
+            return;
+        }
+        showSystemMessageWithSocket("Usage: /snippet add <name> <text> | /snippet del <name> | /snippet list");
+        userMessage.value="";
+        clearDraft();
+    }
+    function saveDraft(){
+        localStorage.setItem("chatDraft",userMessage.value);
+    }
+    function clearDraft(){
+        localStorage.removeItem("chatDraft");
     }
     function showSystemMessageWithSocket(msg){
         let fakeEvent={data:JSON.stringify({type:"system",message:msg})};
@@ -1262,6 +1344,8 @@ document.addEventListener("DOMContentLoaded",()=>{
         if(typingTimeout){clearTimeout(typingTimeout);}
         sendTypingStart();
         typingTimeout=setTimeout(()=>{sendTypingStop();},1000);
+        if(draftTimer){clearTimeout(draftTimer);}
+        draftTimer=setTimeout(saveDraft,300);
     });
     userMessage.addEventListener("blur",()=>{
         if(typingTimeout){clearTimeout(typingTimeout);}
