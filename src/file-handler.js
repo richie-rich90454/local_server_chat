@@ -37,22 +37,24 @@ export function createFileMessageHTML(fileData,fileName,fileSize,mimeType,userna
     const fileIcon=getFileIconSVG(fileType);
     const formattedSize=formatFileSize(fileSize);
     const fileId="file_"+Date.now()+"_"+Math.random().toString(36).substr(2,9);
+    const safeFileName=escapeHtml(fileName||"");
+    const safeFileData=escapeHtml(fileData||"");
     let previewHtml="";
     if(fileType==="image"&&fileData){
-        previewHtml=`<img src="${fileData}" class="file-preview-image" alt="Preview">`;
+        previewHtml=`<img src="${safeFileData}" class="file-preview-image" alt="Preview">`;
     }
     if(fileType==="video"&&fileData){
-        previewHtml=`<video controls class="file-preview-video" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:5px;"><source src="${fileData}"></video>`;
+        previewHtml=`<video controls class="file-preview-video" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:5px;"><source src="${safeFileData}"></video>`;
     }
     if(fileType==="audio"&&fileData){
-        previewHtml=`<audio controls class="file-preview-audio" style="width:100%;margin-top:5px;"><source src="${fileData}"></audio>`;
+        previewHtml=`<audio controls class="file-preview-audio" style="width:100%;margin-top:5px;"><source src="${safeFileData}"></audio>`;
     }
     return`
-        <div class="file-message" data-file-id="${fileId}" data-file-name="${fileName}" data-file-data="${fileData||""}">
+        <div class="file-message" data-file-id="${fileId}" data-file-name="${safeFileName}" data-file-data="${safeFileData}">
             <div class="file-icon">${fileIcon}</div>
             <div class="file-info">
                 <div class="file-name">
-                    ${escapeHtml(fileName)}
+                    ${safeFileName}
                     <span class="file-type-badge file-type-${fileType}">${fileType.toUpperCase()}</span>
                 </div>
                 <div class="file-size">${formattedSize}</div>
