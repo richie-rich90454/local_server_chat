@@ -458,7 +458,7 @@ export async function sendMultipleFiles(files, socket, currentUser, clientRealIP
     }
     showChatError(chatErrorDiv,"Sent "+validFiles.length+" file(s)");
 }
-export function initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml){
+export function initFileHandlers(getSocket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml){
     const onSendComplete=(url, fileName, fileSize, mimeType, time)=>{
         const ip=clientRealIP||"Unknown";
         const fileHTML=createFileMessageHTML(url, fileName, fileSize, mimeType, currentUser, ip, time, true, escapeHtml);
@@ -487,7 +487,7 @@ export function initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,
     });
     document.getElementById("fileInput").addEventListener("change",(e)=>{
         if(e.target.files.length>0){
-            sendMultipleFiles(e.target.files, socket, currentUser, clientRealIP, getCurrentTime, showChatError, chatErrorDiv, onSendComplete);
+            sendMultipleFiles(e.target.files, getSocket(), currentUser, clientRealIP, getCurrentTime, showChatError, chatErrorDiv, onSendComplete);
             e.target.value="";
         }
     });
@@ -504,7 +504,7 @@ export function initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,
         chatAreaDrop.style.opacity="1";
         const files=Array.from(e.dataTransfer.files);
         if(files.length>0){
-            await sendMultipleFiles(files, socket, currentUser, clientRealIP, getCurrentTime, showChatError, chatErrorDiv, onSendComplete);
+            await sendMultipleFiles(files, getSocket(), currentUser, clientRealIP, getCurrentTime, showChatError, chatErrorDiv, onSendComplete);
         }
     });
 }
