@@ -24,6 +24,27 @@ export function createModal(promptMessage, defaultValue, callback){
     function close(){
         overlay.remove();
     }
+    overlay.addEventListener("keydown",(e)=>{
+        if(e.key==="Escape"){
+            close();
+            callback(null);
+        }
+        else if(e.key==="Tab"){
+            let focusables=box.querySelectorAll("button, input, select, textarea, [tabindex]");
+            let list=Array.from(focusables).filter(el=>!el.disabled&&el.offsetParent!==null);
+            if(list.length===0)return;
+            let first=list[0];
+            let last=list[list.length-1];
+            if(e.shiftKey&&document.activeElement===first){
+                e.preventDefault();
+                last.focus();
+            }
+            else if(!e.shiftKey&&document.activeElement===last){
+                e.preventDefault();
+                first.focus();
+            }
+        }
+    });
     okBtn.onclick=()=>{
         let val=input.value.trim();
         close();
