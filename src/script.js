@@ -159,6 +159,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         }
     }
     applyPrefs();
+    applyLanguage();
     if(chatSearchEl){
         chatSearchEl.addEventListener("input",()=>{
             applyVisibilityFilters();
@@ -241,7 +242,38 @@ document.addEventListener("DOMContentLoaded",()=>{
         playMessageSound();
     }
     let settingsOverlay=null;
-    function applyLanguage(){}
+    const I18N={
+        en:{login:"Local Server Chat",joinChat:"Join the chat",genUsername:"Generate a Five Character Username",usernamePh:"Chat Username",userIpPh:"IP not Detected",searchPh:"Search messages...",chatHeading:"Locally Hosted Chat Application Interface",exportChat:"Export Chat",clearChat:"Clear Chat"},
+        es:{login:"Local Server Chat",joinChat:"Unirse al chat",genUsername:"Generar un nombre de usuario",usernamePh:"Nombre de usuario",userIpPh:"IP no detectada",searchPh:"Buscar mensajes...",chatHeading:"Interfaz de chat alojada localmente",exportChat:"Exportar chat",clearChat:"Limpiar chat"},
+        fr:{login:"Local Server Chat",joinChat:"Rejoindre le chat",genUsername:"Générer un nom d'utilisateur",usernamePh:"Nom d'utilisateur",userIpPh:"IP non détectée",searchPh:"Rechercher des messages...",chatHeading:"Interface de chat hébergée localement",exportChat:"Exporter le chat",clearChat:"Effacer le chat"},
+        de:{login:"Local Server Chat",joinChat:"Chat beitreten",genUsername:"Benutzernamen generieren",usernamePh:"Benutzername",userIpPh:"IP nicht erkannt",searchPh:"Nachrichten suchen...",chatHeading:"Lokal gehostete Chat-Oberfläche",exportChat:"Chat exportieren",clearChat:"Chat leeren"},
+        zh:{login:"本地服务器聊天",joinChat:"加入聊天",genUsername:"生成随机用户名",usernamePh:"聊天用户名",userIpPh:"未检测到 IP",searchPh:"搜索消息...",chatHeading:"本地托管的聊天界面",exportChat:"导出聊天",clearChat:"清空聊天"}
+    };
+    function t(key){
+        let dict=I18N[prefs.lang]||I18N.en;
+        return dict[key]!==undefined?dict[key]:(I18N.en[key]||key);
+    }
+    function applyLanguage(){
+        let heading=document.getElementById("loginHeading");
+        if(heading)heading.textContent=t("login");
+        let joinBtn=document.getElementById("joinChat");
+        if(joinBtn)joinBtn.value=t("joinChat");
+        let genBtn=document.getElementById("genUsername");
+        if(genBtn)genBtn.value=t("genUsername");
+        let userEl=document.getElementById("username");
+        if(userEl)userEl.placeholder=t("usernamePh");
+        let ipEl=document.getElementById("userIp");
+        if(ipEl)ipEl.placeholder=t("userIpPh");
+        if(chatSearchEl)chatSearchEl.placeholder=t("searchPh");
+        let chatHeading=document.getElementById("chatHeading");
+        if(chatHeading&&chatHeading.firstChild&&chatHeading.firstChild.nodeType===Node.TEXT_NODE){
+            chatHeading.firstChild.textContent=t("chatHeading")+" ";
+        }
+        let exportBtn=document.getElementById("exportChat");
+        if(exportBtn)exportBtn.value=t("exportChat");
+        let clearBtn=document.getElementById("clearChat");
+        if(clearBtn)clearBtn.value=t("clearChat");
+    }
     function settingsRow(labelText,controlEl){
         let row=document.createElement("div");
         row.style.cssText="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:0.4rem 0;";
