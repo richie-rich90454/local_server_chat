@@ -34,14 +34,34 @@ function waitForServer(){
 }
 function connect(name){
 	return new Promise((resolve,reject)=>{
-		const ws=new WebSocket(WS_URL);
-		const messages=[];
-		ws.on("open",()=>resolve({ws,messages}));
-		ws.on("message",data=>{
-			try{messages.push(JSON.parse(data.toString()));}catch(e){}
-		});
-		ws.on("error",reject);
-		setTimeout(()=>reject(new Error("connect timeout for "+name)),10000);
+		let lastErr=null;
+		const attempts=40;
+		let tries=0;
+		const tryConnect=()=>{
+			tries++;
+			const ws=new WebSocket(WS_URL);
+			const messages=[];
+			let settled=false;
+			ws.on("open",()=>{
+				settled=true;
+				ws.on("message",data=>{
+					try{messages.push(JSON.parse(data.toString()));}catch(e){}
+				});
+				resolve({ws,messages});
+			});
+			ws.on("error",err=>{
+				lastErr=err;
+				if(settled)return;
+				try{ws.terminate();}catch(e){}
+				if(tries>=attempts){
+					reject(new Error("connect timeout for "+name+": "+(lastErr&&lastErr.message)));
+				}
+				else{
+					setTimeout(tryConnect,250);
+				}
+			});
+		};
+		tryConnect();
 	});
 }
 function send(ws,obj){
