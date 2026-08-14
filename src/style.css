@@ -983,6 +983,9 @@ body.wrap-code .code-block-container pre{
     white-space:pre-wrap;
     word-break:break-word;
 }
+body.hide-timestamps .msg-time{
+    display:none;
+}
 body.reduce-motion *,
 body.reduce-motion *::before,
 body.reduce-motion *::after{
