@@ -57,6 +57,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
     let currentRoom="General";
     let roomSelector=null;
+    let sendQueue=[];
+    let inputHistory=[];
+    let historyIndex=-1;
     let sentCount=0;
     let receivedCount=0;
     let connectedAt=0;
@@ -630,8 +633,22 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
     function sendMessageContent(message,isImage=false,imageData=null){
         if(!socket||socket.readyState!==WebSocket.OPEN){
-            showChatError(chatErrorDiv,"Connection lost.");
-            return false;
+            showChatError(chatErrorDiv,"Offline. Message queued.");
+            let payload;
+            if(isImage){
+                payload=JSON.stringify({type:"image",username:currentUser,image:imageData,ip:clientRealIP,timestamp:getCurrentTime()});
+            }
+            else{
+                let priv=parsePrivateMessage(message);
+                if(priv){
+                    payload=JSON.stringify({type:"private",username:currentUser,target:priv.target,message:applyEmojiShortcuts(priv.content),ip:clientRealIP,timestamp:getCurrentTime()});
+                }
+                else{
+                    payload=JSON.stringify({username:currentUser,message:applyEmojiShortcuts(message),ip:clientRealIP});
+                }
+            }
+            sendQueue.push(payload);
+            return true;
         }
         if(isImage){
             socket.send(JSON.stringify({type:"image",username:currentUser,image:imageData,ip:clientRealIP,timestamp:getCurrentTime()}));
@@ -1007,6 +1024,9 @@ document.addEventListener("DOMContentLoaded",()=>{
                 if(currentRoom&&currentRoom!=="General"){
                     socket.send(JSON.stringify({type:"joinRoom",room:currentRoom}));
                 }
+                while(sendQueue.length){
+                    socket.send(sendQueue.shift());
+                }
                 setTimeout(()=>{
                     if(socket&&socket.readyState===WebSocket.OPEN){
                         socket.send(JSON.stringify({type:"getUsers"}));
@@ -1256,10 +1276,34 @@ document.addEventListener("DOMContentLoaded",()=>{
             e.preventDefault();
             wrapSelection(userMessage,"`","`");
         }
+        else if(e.key==="ArrowUp"&&!e.shiftKey&&!e.altKey){
+            if(inputHistory.length===0)return;
+            if(historyIndex===inputHistory.length&&userMessage.value.trim()!=="")return;
+            if(historyIndex>0){
+                historyIndex--;
+                userMessage.value=inputHistory[historyIndex];
+                e.preventDefault();
+            }
+        }
+        else if(e.key==="ArrowDown"&&!e.shiftKey){
+            if(historyIndex===inputHistory.length)return;
+            historyIndex++;
+            if(historyIndex>=inputHistory.length){
+                historyIndex=inputHistory.length;
+                userMessage.value="";
+            }
+            else{
+                userMessage.value=inputHistory[historyIndex];
+            }
+            e.preventDefault();
+        }
     });
     function sendMessage(){
         let msg=userMessage.value.trim();
         if(!msg){return;}
+        inputHistory.push(msg);
+        if(inputHistory.length>100)inputHistory.shift();
+        historyIndex=inputHistory.length;
         if(msg.startsWith("/snippet ")){
             handleSnippetCommand(msg);
             return;
@@ -1346,6 +1390,28 @@ document.addEventListener("DOMContentLoaded",()=>{
         typingTimeout=setTimeout(()=>{sendTypingStop();},1000);
         if(draftTimer){clearTimeout(draftTimer);}
         draftTimer=setTimeout(saveDraft,300);
+        userMessage.style.height="auto";
+        userMessage.style.height=Math.min(userMessage.scrollHeight,200)+"px";
+    });
+    userMessage.addEventListener("paste",(e)=>{
+        if(!e.clipboardData)return;
+        for(let item of e.clipboardData.items){
+            if(item.kind==="file"&&item.type&&item.type.startsWith("image/")){
+                e.preventDefault();
+                let file=item.getAsFile();
+                if(!file)return;
+                if(file.size>1024*1024){
+                    showChatError(chatErrorDiv,"Max 1MB.");
+                    return;
+                }
+                convertToWebP(file).then(webp=>{
+                    sendMessageContent(null,true,webp);
+                }).catch(err=>{
+                    showChatError(chatErrorDiv,"Image conversion failed");
+                });
+                return;
+            }
+        }
     });
     userMessage.addEventListener("blur",()=>{
         if(typingTimeout){clearTimeout(typingTimeout);}
