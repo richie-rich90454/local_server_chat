@@ -35,7 +35,6 @@ export function createConnectionManager(){
 			if(handlers.onClose)handlers.onClose();
 			if(!intentionalClose){
 				let delay=Math.min(1000*Math.pow(1.5,reconnectAttempts),3000);
-				if(reconnectAttempts===0)delay=3000;
 				reconnectTimer=setTimeout(()=>{reconnectAttempts++;connect(host,port);},delay);
 			}
 		};
