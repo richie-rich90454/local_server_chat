@@ -663,6 +663,30 @@ document.addEventListener("DOMContentLoaded",()=>{
             ta.remove();
         }
     }
+    let lastMessageDate="";
+    let newMsgDividerShown=false;
+    function maybeInsertDateDivider(){
+        let ds=new Date().toDateString();
+        if(!lastMessageDate){lastMessageDate=ds;return;}
+        if(ds===lastMessageDate)return;
+        let y=new Date(Date.now()-86400000).toDateString();
+        let prevStr=new Date(lastMessageDate).toLocaleDateString([],{weekday:"short",month:"short",day:"numeric"});
+        let label=(lastMessageDate===y)?"Yesterday":prevStr;
+        let div=document.createElement("li");
+        div.className="msg-date-divider";
+        div.textContent=label;
+        messagesList.appendChild(div);
+        lastMessageDate=ds;
+    }
+    function maybeInsertNewMsgDivider(){
+        if(!autoScroll&&!newMsgDividerShown){
+            newMsgDividerShown=true;
+            let div=document.createElement("li");
+            div.className="new-msg-divider";
+            div.textContent="New messages";
+            messagesList.appendChild(div);
+        }
+    }
     function addMessageToUI(data){
         if(data.type==="onlineCount"){
             let span=document.getElementById("onlineCount");
@@ -670,6 +694,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             return;
         }
         if(data.type==="typing"){
+            if(prefs.focusMode)return;
             if(data.typing){currentTypers.add(data.username);}
             else{currentTypers.delete(data.username);}
             updateTypingIndicator();
@@ -711,6 +736,10 @@ document.addEventListener("DOMContentLoaded",()=>{
             return;
         }
         if(data.type==="system"){
+            if(prefs.focusMode){
+                handleSystemMessage(data.message);
+                return;
+            }
             if(handleSystemMessage(data.message)) return;
             let li=document.createElement("li");
             li.innerHTML=`<em>${escapeHtml(data.message)}</em>`;
@@ -787,6 +816,8 @@ document.addEventListener("DOMContentLoaded",()=>{
         }
         if(data.type==="private"){
             if(isHiddenFromView(data))return;
+            maybeInsertDateDivider();
+            maybeInsertNewMsgDivider();
             let time=data.timestamp||getCurrentTime();
             let formatted=formatMarkdown(data.message);
             let ip=data.ip||"Unknown";
@@ -807,6 +838,8 @@ document.addEventListener("DOMContentLoaded",()=>{
         }
         if(data.type==="image"){
             if(isHiddenFromView(data))return;
+            maybeInsertDateDivider();
+            maybeInsertNewMsgDivider();
             let time=getCurrentTime();
             let ip=data.ip||clientRealIP||"Unknown";
             let imgHtml=isSafeMediaSrc(data.image)?`<img src="${escapeHtml(data.image)}" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:4px;cursor:pointer;" onclick="window.open(this.src,'_blank')">`:`<em>[Unsafe image blocked]</em>`;
@@ -828,6 +861,8 @@ document.addEventListener("DOMContentLoaded",()=>{
         }
         if(data.type==="voice"){
             if(isHiddenFromView(data))return;
+            maybeInsertDateDivider();
+            maybeInsertNewMsgDivider();
             let time=getCurrentTime();
             let ip=data.ip||clientRealIP||"Unknown";
             let audioHtml=isSafeMediaSrc(data.voice)?`<audio controls src="${escapeHtml(data.voice)}" style="max-width:100%;"></audio>`:`<em>[Unsafe audio blocked]</em>`;
@@ -863,6 +898,8 @@ document.addEventListener("DOMContentLoaded",()=>{
             return;
         }
         if(isHiddenFromView(data))return;
+        maybeInsertDateDivider();
+        maybeInsertNewMsgDivider();
         let time=getCurrentTime();
         let formatted=formatMarkdown(data.message||"");
         let ip=data.ip||clientRealIP||"Unknown";
@@ -889,6 +926,10 @@ document.addEventListener("DOMContentLoaded",()=>{
         li.appendChild(replySpan);
         li.setAttribute("data-sender",data.username);
         li.setAttribute("data-rawmessage",data.message);
+        li.addEventListener("dblclick",(e)=>{
+            e.stopPropagation();
+            insertReplyQuote(userMessage,data.username,data.message);
+        });
         li.addEventListener("contextmenu",(e)=>{
             e.preventDefault();
             let menu=document.getElementById("contextMenu");
@@ -1418,7 +1459,12 @@ document.addEventListener("DOMContentLoaded",()=>{
             applyTheme(e.matches?"dark":"light");
         }
     });
-    messagesList.addEventListener("scroll",()=>checkScrollPosition(messagesList,scrollBtn,autoScroll));
+    messagesList.addEventListener("scroll",()=>{
+        checkScrollPosition(messagesList,scrollBtn,autoScroll);
+        if(messagesList.scrollHeight-messagesList.scrollTop<=messagesList.clientHeight+10){
+            newMsgDividerShown=false;
+        }
+    });
     if(scrollBtn){
         scrollBtn.addEventListener("click",()=>{
             scrollToBottom(messagesList);
