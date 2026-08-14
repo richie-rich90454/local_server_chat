@@ -5,6 +5,8 @@ import {create2048Game, createChessGame, processCommand, updateDeveloperMode, ap
 import {initFileHandlers, handleFileStart, handleBinaryChunk, handleFileEnd, handleFileCancel, sendFileChunked, createFileMessageHTML} from "./file-handler.js";
 import QRCode from "qrcode";
 import {generateIdenticon} from "./identicon.js";
+import {gcm} from "@noble/ciphers/aes.js";
+import {sha256} from "@noble/hashes/sha2.js";
 import "./font-preload.css";
 document.addEventListener("DOMContentLoaded",()=>{
     let headerControls=document.getElementById("headerControls");
@@ -363,7 +365,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         e2ePassInput.value=prefs.e2ePass;
         e2ePassInput.placeholder="Shared encryption password";
         e2ePassInput.style.cssText="background:var(--button-bg);color:var(--text-primary);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:.2rem .4rem;width:12rem;";
-        e2ePassInput.onchange=()=>{prefs.e2ePass=e2ePassInput.value;savePrefs();};
+        e2ePassInput.onchange=()=>{prefs.e2ePass=e2ePassInput.value;savePrefs();deriveE2EKey();};
         box.appendChild(settingsRow("End-to-end encryption",e2eBox));
         box.appendChild(settingsRow("Encryption password",e2ePassInput));
         let wordsArea=document.createElement("textarea");
@@ -663,37 +665,33 @@ document.addEventListener("DOMContentLoaded",()=>{
             socket.send(JSON.stringify({type:"typing",username:currentUser,typing:true}));
         }
     }
+    function buildOutgoingPayload(message,isImage,imageData){
+        if(isImage){
+            return JSON.stringify({type:"image",username:currentUser,image:imageData,ip:clientRealIP,timestamp:getCurrentTime()});
+        }
+        let priv=parsePrivateMessage(message);
+        if(priv){
+            let content=applyEmojiShortcuts(priv.content);
+            if(prefs.e2e&&e2eKey){
+                let enc=e2eEncrypt(content);
+                return JSON.stringify({type:"private",username:currentUser,target:priv.target,enc:1,nonce:enc.nonce,ct:enc.ct,ip:clientRealIP,timestamp:getCurrentTime()});
+            }
+            return JSON.stringify({type:"private",username:currentUser,target:priv.target,message:content,ip:clientRealIP,timestamp:getCurrentTime()});
+        }
+        let content=applyEmojiShortcuts(message);
+        if(prefs.e2e&&e2eKey){
+            let enc=e2eEncrypt(content);
+            return JSON.stringify({username:currentUser,enc:1,nonce:enc.nonce,ct:enc.ct,ip:clientRealIP});
+        }
+        return JSON.stringify({username:currentUser,message:content,ip:clientRealIP});
+    }
     function sendMessageContent(message,isImage=false,imageData=null){
         if(!socket||socket.readyState!==WebSocket.OPEN){
             showChatError(chatErrorDiv,"Offline. Message queued.");
-            let payload;
-            if(isImage){
-                payload=JSON.stringify({type:"image",username:currentUser,image:imageData,ip:clientRealIP,timestamp:getCurrentTime()});
-            }
-            else{
-                let priv=parsePrivateMessage(message);
-                if(priv){
-                    payload=JSON.stringify({type:"private",username:currentUser,target:priv.target,message:applyEmojiShortcuts(priv.content),ip:clientRealIP,timestamp:getCurrentTime()});
-                }
-                else{
-                    payload=JSON.stringify({username:currentUser,message:applyEmojiShortcuts(message),ip:clientRealIP});
-                }
-            }
-            sendQueue.push(payload);
+            sendQueue.push(buildOutgoingPayload(message,isImage,imageData));
             return true;
         }
-        if(isImage){
-            socket.send(JSON.stringify({type:"image",username:currentUser,image:imageData,ip:clientRealIP,timestamp:getCurrentTime()}));
-        }
-        else{
-            let priv=parsePrivateMessage(message);
-            if(priv){
-                socket.send(JSON.stringify({type:"private",username:currentUser,target:priv.target,message:applyEmojiShortcuts(priv.content),ip:clientRealIP,timestamp:getCurrentTime()}));
-            }
-            else{
-                socket.send(JSON.stringify({username:currentUser,message:applyEmojiShortcuts(message),ip:clientRealIP}));
-            }
-        }
+        socket.send(buildOutgoingPayload(message,isImage,imageData));
         sentCount++;
         updateSessionStats();
         return true;
@@ -744,6 +742,49 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
     function coloredNameHtml(name){
         return `<span style="color:${colorForUsername(name)}">${escapeHtml(name)}</span>`;
+    }
+    let e2eKey=null;
+    function b64encode(bytes){
+        let bin="";
+        for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+        return btoa(bin);
+    }
+    function b64decode(str){
+        let bin=atob(str);
+        let bytes=new Uint8Array(bin.length);
+        for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+        return bytes;
+    }
+    function deriveE2EKey(){
+        if(prefs.e2e&&prefs.e2ePass){
+            e2eKey=sha256(new TextEncoder().encode(prefs.e2ePass));
+        }
+        else{
+            e2eKey=null;
+        }
+    }
+    function e2eEncrypt(text){
+        let nonce=crypto.getRandomValues(new Uint8Array(12));
+        let aes=new gcm(e2eKey,nonce);
+        let ct=aes.encrypt(new TextEncoder().encode(text));
+        return{nonce:b64encode(nonce),ct:b64encode(ct)};
+    }
+    function e2eDecrypt(payload){
+        let aes=new gcm(e2eKey,b64decode(payload.nonce));
+        return new TextDecoder().decode(aes.decrypt(b64decode(payload.ct)));
+    }
+    function decryptIncoming(data){
+        if(!data.enc)return;
+        if(!(prefs.e2e&&e2eKey)){
+            data.message="🔒 Encrypted message (key not available)";
+            return;
+        }
+        try{
+            data.message=e2eDecrypt({nonce:data.nonce,ct:data.ct});
+        }
+        catch(err){
+            data.message="🔒 Could not decrypt message";
+        }
     }
     function copyTextToClipboard(text){
         if(navigator.clipboard&&navigator.clipboard.writeText){
@@ -935,6 +976,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         }
         if(data.type==="private"){
             if(isHiddenFromView(data))return;
+            decryptIncoming(data);
             maybeInsertDateDivider();
             maybeInsertNewMsgDivider();
             let time=data.timestamp||getCurrentTime();
@@ -1017,6 +1059,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             return;
         }
         if(isHiddenFromView(data))return;
+        decryptIncoming(data);
         maybeInsertDateDivider();
         maybeInsertNewMsgDivider();
         let time=getCurrentTime();
@@ -1148,6 +1191,11 @@ document.addEventListener("DOMContentLoaded",()=>{
         }
         if(info.joinCode&&joinCodeValue){
             joinCodeValue.textContent=info.joinCode;
+            if(prefs.e2e&&!prefs.e2ePass&&info.joinCode){
+                prefs.e2ePass=info.joinCode;
+                savePrefs();
+                deriveE2EKey();
+            }
         }
         if(serverInfoDiv&&info.name){
             serverInfoDiv.style.display="block";
@@ -1283,6 +1331,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             return;
         }
         currentUser=username;
+        deriveE2EKey();
         if("Notification" in window&&Notification.permission==="default"){
             Notification.requestPermission().catch(()=>{});
         }
