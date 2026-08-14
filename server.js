@@ -28,12 +28,6 @@ function generateJoinCode(){
 const joinCode=generateJoinCode();
 const joinCodeMap=new Map();
 joinCodeMap.set(joinCode,{ip:localIP,port:WS_PORT,uiPort:UI_PORT,name:serverName});
-setInterval(()=>{
-	for(const[key]of joinCodeMap.entries()){
-		joinCodeMap.delete(key);
-	}
-	joinCodeMap.set(joinCode,{ip:localIP,port:WS_PORT,uiPort:UI_PORT,name:serverName});
-},300000);
 const{server:wsServer,getStats}=createWebSocketServer(WS_PORT,localIP);
 let discoverySocket=null;
 if(serverName){
