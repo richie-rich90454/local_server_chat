@@ -1,32 +1,16 @@
 import express from"express";
-import path from"path";
 import http from"http";
 import{WebSocket}from"ws";
 import dgram from"dgram";
+import{createStaticMiddleware}from"./src/server/static.js";
 import{DISCOVERY_ADDRESS,DISCOVERY_PORT,DISCOVERY_TYPE,PROTOCOL_VERSION}from"./src/protocol/constants.js";
-const scriptDir=path.dirname(process.argv[1]||".");
-function getDistDir(){
-	if(path.basename(process.argv[0]||"")==="node"||path.basename(process.argv[0]||"")==="node.exe"){
-		return path.join(scriptDir,"dist");
-	}
-	return path.join(path.dirname(process.execPath),"dist");
-}
 const discoveredServers=new Map();
 let sseClients=[];
 let activeConnection=null;
 let remoteSocket=null;
 const app=express();
 app.use(express.json());
-app.use(express.static(getDistDir(),{
-	maxAge:"1h",
-	etag:true,
-	lastModified:true,
-	setHeaders(res,filePath){
-		if(filePath.endsWith("sw.js")||filePath.endsWith("index.html")){
-			res.setHeader("Cache-Control","no-cache");
-		}
-	}
-}));
+app.use(createStaticMiddleware());
 app.get("/client-info",(req,res)=>{
 	res.json({mode:"client",protocol:PROTOCOL_VERSION});
 });
