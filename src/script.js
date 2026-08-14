@@ -699,6 +699,20 @@ document.addEventListener("DOMContentLoaded",()=>{
     function isSafeMediaSrc(src){
         return typeof src==="string"&&/^(data:|blob:)/.test(src);
     }
+    function nameHash(str){
+        let h=0;
+        for(let i=0;i<str.length;i++){
+            h=((h<<5)-h)+str.charCodeAt(i);
+            h|=0;
+        }
+        return Math.abs(h);
+    }
+    function colorForUsername(name){
+        return "hsl("+(nameHash(name)%360)+",70%,50%)";
+    }
+    function coloredNameHtml(name){
+        return `<span style="color:${colorForUsername(name)}">${escapeHtml(name)}</span>`;
+    }
     function copyTextToClipboard(text){
         if(navigator.clipboard&&navigator.clipboard.writeText){
             navigator.clipboard.writeText(text).catch(()=>{});
@@ -874,7 +888,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             let identiconName=data.self?data.target:data.from;
             let identiconSvg=generateIdenticon(identiconName,20);
             let identiconHtml=identiconSvg?" "+identiconSvg.outerHTML:"";
-            let html=data.self?`[Private to ${escapeHtml(data.target)}] You [${ip}] (${time}): ${formatted}${identiconHtml}`:`[Private] ${escapeHtml(data.from)} [${ip}] (${time}): ${formatted}${identiconHtml}`;
+            let html=data.self?`[Private to ${escapeHtml(data.target)}] You [${ip}] (${time}): ${formatted}${identiconHtml}`:`[Private] ${coloredNameHtml(data.from)} [${ip}] (${time}): ${formatted}${identiconHtml}`;
             let li=document.createElement("li");
             li.innerHTML=html;
             li.style.whiteSpace="pre-wrap";
@@ -895,7 +909,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             let imgHtml=isSafeMediaSrc(data.image)?`<img src="${escapeHtml(data.image)}" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:4px;cursor:pointer;" onclick="window.open(this.src,'_blank')">`:`<em>[Unsafe image blocked]</em>`;
             let identiconSvg=generateIdenticon(data.username,20);
             let identiconHtml=identiconSvg?identiconSvg.outerHTML+" ":"";
-            let rawHtml=identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${imgHtml}`;
+            let rawHtml=identiconHtml+`${coloredNameHtml(data.username)} [${ip}] (${time}):<br> ${imgHtml}`;
             let li=document.createElement("li");
             li.innerHTML=rawHtml;
             li.style.display="flex";
@@ -918,7 +932,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             let audioHtml=isSafeMediaSrc(data.voice)?`<audio controls src="${escapeHtml(data.voice)}" style="max-width:100%;"></audio>`:`<em>[Unsafe audio blocked]</em>`;
             let identiconSvg=generateIdenticon(data.username,20);
             let identiconHtml=identiconSvg?identiconSvg.outerHTML+" ":"";
-            let rawHtml=identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${audioHtml}`;
+            let rawHtml=identiconHtml+`${coloredNameHtml(data.username)} [${ip}] (${time}):<br> ${audioHtml}`;
             let li=document.createElement("li");
             li.innerHTML=rawHtml;
             li.style.display="flex";
@@ -955,7 +969,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         let ip=data.ip||clientRealIP||"Unknown";
         let identiconSvg=generateIdenticon(data.username,20);
         let identiconHtml=identiconSvg?identiconSvg.outerHTML+" ":"";
-        let baseHtml=identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}): ${formatted}`;
+        let baseHtml=identiconHtml+`${coloredNameHtml(data.username)} [${ip}] (${time}): ${formatted}`;
         let finalHtml=highlightMentions(baseHtml,currentUser);
         let li=document.createElement("li");
         li.innerHTML=finalHtml;
@@ -1092,6 +1106,18 @@ document.addEventListener("DOMContentLoaded",()=>{
         if(qrCanvas&&info.ip&&info.name){
             let url=`http://${info.ip}:${info.uiPort||2047}`;
             QRCode.toCanvas(qrCanvas,url,{width:128,margin:1,errorCorrectionLevel:"L"}).catch(()=>{});
+            let linkBtn=document.getElementById("copyLinkBtn");
+            if(!linkBtn){
+                linkBtn=document.createElement("button");
+                linkBtn.id="copyLinkBtn";
+                linkBtn.textContent="Copy Link";
+                linkBtn.style.cssText="margin:0 auto .3rem;display:block;padding:.2rem .8rem;background:var(--button-bg);border:1px solid var(--border-card);border-radius:var(--border-radius);cursor:pointer;color:var(--text-primary);";
+                linkBtn.onclick=()=>{
+                    copyTextToClipboard(url);
+                    showChatError(chatErrorDiv,"Link copied.");
+                };
+                qrCanvas.parentNode.insertBefore(linkBtn,qrCanvas);
+            }
         }
     }).catch(()=>{});
     let clientMode=false;
