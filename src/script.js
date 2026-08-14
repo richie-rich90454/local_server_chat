@@ -94,10 +94,10 @@ document.addEventListener("DOMContentLoaded",()=>{
     function loadPrefs(){
         try{
             let saved=JSON.parse(localStorage.getItem("chatPrefs")||"{}");
-            return Object.assign({sound:true,dndUntil:0,density:"comfortable",focusMode:false,reduceMotion:false,wrapCode:false,textSize:"normal",accent:"",lang:"en",e2e:false,e2ePass:"",ignoredUsers:[],blockedWords:[],snippets:{}},saved);
+            return Object.assign({soundChoice:"short",hideTimestamps:false,dndUntil:0,density:"comfortable",focusMode:false,reduceMotion:false,wrapCode:false,textSize:"normal",accent:"",lang:"en",e2e:false,e2ePass:"",ignoredUsers:[],blockedWords:[],snippets:{}},saved);
         }
         catch(e){
-            return{sound:true,dndUntil:0,density:"comfortable",focusMode:false,reduceMotion:false,wrapCode:false,textSize:"normal",accent:"",lang:"en",e2e:false,e2ePass:"",ignoredUsers:[],blockedWords:[],snippets:{}};
+            return{soundChoice:"short",hideTimestamps:false,dndUntil:0,density:"comfortable",focusMode:false,reduceMotion:false,wrapCode:false,textSize:"normal",accent:"",lang:"en",e2e:false,e2ePass:"",ignoredUsers:[],blockedWords:[],snippets:{}};
         }
     }
     function savePrefs(){
@@ -107,6 +107,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         document.body.classList.toggle("density-compact",prefs.density==="compact");
         document.body.classList.toggle("reduce-motion",prefs.reduceMotion);
         document.body.classList.toggle("wrap-code",prefs.wrapCode);
+        document.body.classList.toggle("hide-timestamps",prefs.hideTimestamps);
         if(prefs.textSize==="small"){
             document.documentElement.style.fontSize="14px";
         }
@@ -159,8 +160,6 @@ document.addEventListener("DOMContentLoaded",()=>{
             li.classList.toggle("search-hidden",hidden);
         }
     }
-    applyPrefs();
-    applyLanguage();
     if(chatSearchEl){
         chatSearchEl.addEventListener("input",()=>{
             applyVisibilityFilters();
@@ -203,19 +202,31 @@ document.addEventListener("DOMContentLoaded",()=>{
         return prefs.dndUntil>Date.now();
     }
     function playMessageSound(){
-        if(!prefs.sound||inDnd())return;
+        if(inDnd()||prefs.soundChoice==="off")return;
         try{
             let ctx=new(window.AudioContext||window.webkitAudioContext)();
-            let osc=ctx.createOscillator();
             let gain=ctx.createGain();
-            osc.type="sine";
-            osc.frequency.value=880;
             gain.gain.setValueAtTime(0.08,ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.15);
-            osc.connect(gain);
+            gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.3);
             gain.connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime+0.15);
+            if(prefs.soundChoice==="double"){
+                for(let f of [660,990]){
+                    let osc=ctx.createOscillator();
+                    osc.type="sine";
+                    osc.frequency.value=f;
+                    osc.connect(gain);
+                    osc.start(ctx.currentTime+(f===660?0:0.15));
+                    osc.stop(ctx.currentTime+(f===660?0.15:0.3));
+                }
+            }
+            else{
+                let osc=ctx.createOscillator();
+                osc.type="sine";
+                osc.frequency.value=880;
+                osc.connect(gain);
+                osc.start();
+                osc.stop(ctx.currentTime+0.15);
+            }
         }
         catch(e){}
     }
@@ -230,7 +241,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         }
     }
     function playMentionSound(){
-        if(!prefs.sound||inDnd())return;
+        if(inDnd()||prefs.soundChoice==="off")return;
         try{
             let ctx=new(window.AudioContext||window.webkitAudioContext)();
             let gain=ctx.createGain();
@@ -360,9 +371,12 @@ document.addEventListener("DOMContentLoaded",()=>{
         let sizeSel=mkSelect([["small","Small"],["normal","Normal"],["large","Large"]],prefs.textSize);
         sizeSel.onchange=()=>{prefs.textSize=sizeSel.value;savePrefs();applyPrefs();};
         box.appendChild(settingsRow("Text size",sizeSel));
-        let soundBox=mkCheckbox(prefs.sound);
-        soundBox.onchange=()=>{prefs.sound=soundBox.checked;savePrefs();};
-        box.appendChild(settingsRow("Message sound",soundBox));
+        let soundSel=mkSelect([["off","Off"],["short","Short blip"],["double","Double beep"]],prefs.soundChoice);
+        soundSel.onchange=()=>{prefs.soundChoice=soundSel.value;savePrefs();};
+        box.appendChild(settingsRow("Message sound",soundSel));
+        let timeBox=mkCheckbox(prefs.hideTimestamps);
+        timeBox.onchange=()=>{prefs.hideTimestamps=timeBox.checked;savePrefs();applyPrefs();};
+        box.appendChild(settingsRow("Hide timestamps",timeBox));
         let focusBox=mkCheckbox(prefs.focusMode);
         focusBox.onchange=()=>{prefs.focusMode=focusBox.checked;savePrefs();};
         box.appendChild(settingsRow("Focus mode (messages only)",focusBox));
@@ -1039,7 +1053,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             let identiconName=data.self?data.target:data.from;
             let identiconSvg=generateIdenticon(identiconName,20);
             let identiconHtml=identiconSvg?" "+identiconSvg.outerHTML:"";
-            let html=data.self?`[Private to ${escapeHtml(data.target)}] You [${ip}] (${time}): ${formatted}${identiconHtml}`:`[Private] ${coloredNameHtml(data.from)} [${ip}] (${time}): ${formatted}${identiconHtml}`;
+            let html=data.self?`[Private to ${escapeHtml(data.target)}] You [${ip}] <span class="msg-time">(${time})</span>: ${formatted}${identiconHtml}`:`[Private] ${coloredNameHtml(data.from)} [${ip}] <span class="msg-time">(${time})</span>: ${formatted}${identiconHtml}`;
             let li=document.createElement("li");
             li.innerHTML=html;
             li.style.whiteSpace="pre-wrap";
@@ -1060,7 +1074,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             let imgHtml=isSafeMediaSrc(data.image)?`<img src="${escapeHtml(data.image)}" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:4px;cursor:pointer;" onclick="window.open(this.src,'_blank')">`:`<em>[Unsafe image blocked]</em>`;
             let identiconSvg=generateIdenticon(data.username,20);
             let identiconHtml=identiconSvg?identiconSvg.outerHTML+" ":"";
-            let rawHtml=identiconHtml+`${coloredNameHtml(data.username)} [${ip}] (${time}):<br> ${imgHtml}`;
+            let rawHtml=identiconHtml+`${coloredNameHtml(data.username)} [${ip}] <span class="msg-time">(${time})</span>:<br> ${imgHtml}`;
             let li=document.createElement("li");
             li.innerHTML=rawHtml;
             li.style.display="flex";
@@ -1083,7 +1097,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             let audioHtml=isSafeMediaSrc(data.voice)?`<audio controls src="${escapeHtml(data.voice)}" style="max-width:100%;"></audio>`:`<em>[Unsafe audio blocked]</em>`;
             let identiconSvg=generateIdenticon(data.username,20);
             let identiconHtml=identiconSvg?identiconSvg.outerHTML+" ":"";
-            let rawHtml=identiconHtml+`${coloredNameHtml(data.username)} [${ip}] (${time}):<br> ${audioHtml}`;
+            let rawHtml=identiconHtml+`${coloredNameHtml(data.username)} [${ip}] <span class="msg-time">(${time})</span>:<br> ${audioHtml}`;
             let li=document.createElement("li");
             li.innerHTML=rawHtml;
             li.style.display="flex";
@@ -1121,7 +1135,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         let ip=data.ip||clientRealIP||"Unknown";
         let identiconSvg=generateIdenticon(data.username,20);
         let identiconHtml=identiconSvg?identiconSvg.outerHTML+" ":"";
-        let baseHtml=identiconHtml+`${coloredNameHtml(data.username)} [${ip}] (${time}): ${formatted}`;
+        let baseHtml=identiconHtml+`${coloredNameHtml(data.username)} [${ip}] <span class="msg-time">(${time})</span>: ${formatted}`;
         let finalHtml=highlightMentions(baseHtml,currentUser);
         let li=document.createElement("li");
         li.innerHTML=finalHtml;
@@ -1850,4 +1864,6 @@ document.addEventListener("DOMContentLoaded",()=>{
             },100);
         }
     },500);
+    applyPrefs();
+    applyLanguage();
 });
