@@ -1690,8 +1690,9 @@ document.addEventListener("DOMContentLoaded",()=>{
         document.body.appendChild(voiceFileInput);
         function voiceSendComplete(url,fileName,fileSize,mimeType,time){
             const ip=clientRealIP||"Unknown";
+            const safeIp=escapeHtml(ip);
             const fileHTML=createFileMessageHTML(url,fileName,fileSize,mimeType,currentUser,ip,time,true,escapeHtml);
-            let rawHtml=escapeHtml(currentUser)+" ["+ip+"] ("+time+"):<br>"+fileHTML;
+            let rawHtml=escapeHtml(currentUser)+" ["+safeIp+"] ("+time+"):<br>"+fileHTML;
             let li=document.createElement("li");
             li.innerHTML=rawHtml;
             li.classList.add("userMessage");
