@@ -1,0 +1,70 @@
+name: build
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: build-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run package
+      - name: verify executables
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            test -f release/LocalServerChat.exe
+            test -f release/LocalServerChatClient.exe
+          else
+            test -f release/LocalServerChat
+            test -f release/LocalServerChatClient
+          fi
+      - name: rename executables per platform
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            mv release/LocalServerChat.exe release/LocalServerChat-windows.exe
+            mv release/LocalServerChatClient.exe release/LocalServerChatClient-windows.exe
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            mv release/LocalServerChat release/LocalServerChat-macos
+            mv release/LocalServerChatClient release/LocalServerChatClient-macos
+          else
+            mv release/LocalServerChat release/LocalServerChat-linux
+            mv release/LocalServerChatClient release/LocalServerChatClient-linux
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LocalServerChat-${{ matrix.os }}
+          path: release/LocalServerChat*
+          if-no-files-found: error
+
+  release:
+    name: release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: artifacts/LocalServerChat*
