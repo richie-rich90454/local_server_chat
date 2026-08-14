@@ -1,4 +1,4 @@
-import{cpSync,existsSync,mkdirSync}from"fs";
+import{cpSync,existsSync}from"fs";
 import{execSync}from"child_process";
 import{join}from"path";
 const isClient=process.argv.includes("--client");
@@ -25,10 +25,7 @@ try{
 		}
 	}
 	if(existsSync("dist")){
-		const distDir=join("release","dist");
-		if(!existsSync(distDir)){mkdirSync(distDir);}
-		cpSync("dist",distDir,{recursive:true});
-		console.log("Copied dist/ to release/dist/");
+		console.log("Note: dist/ is embedded in the exe; no separate copy needed.");
 	}
 	console.log("Build complete: "+target);
 }
