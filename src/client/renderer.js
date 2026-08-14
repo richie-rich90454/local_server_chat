@@ -1,4 +1,4 @@
-import{formatMarkdown,highlightMentions}from"../highlight-config.js";
+import{formatMarkdown,highlightMentions,escapeHtml}from"../highlight-config.js";
 import{generateIdenticon}from"../identicon.js";
 import{getCurrentTime}from"../ui-helpers.js";
 export function renderMessage(data,currentUser){
@@ -7,7 +7,7 @@ export function renderMessage(data,currentUser){
 	let identiconSvg=generateIdenticon(data.username,20);
 	let identiconHtml=identiconSvg?identiconSvg.outerHTML+" ":"";
 	if(data.type==="system"){
-		return{html:`<em>${escapeHtml(data.message)}</em>`,className:"",style:"white-space:pre-wrap;color:gray;font-style:italic;"};
+		return{html:`<em>${escapeHtml(data.message)}</em>`,className:"",style:"white-space:pre-wrap;color:gray;font-style:italic;",sender:"",raw:data.message};
 	}
 	if(data.type==="private"){
 		let formatted=formatMarkdown(data.message);
@@ -15,20 +15,20 @@ export function renderMessage(data,currentUser){
 		let identSvg=generateIdenticon(identiconName,20);
 		let identHtml=identSvg?" "+identSvg.outerHTML:"";
 		let html=data.self?`[Private to ${escapeHtml(data.target)}] You [${ip}] (${time}): ${formatted}${identHtml}`:`[Private] ${escapeHtml(data.from)} [${ip}] (${time}): ${formatted}${identHtml}`;
-		return{html,className:data.self?"userMessage":"otherMessage",style:"white-space:pre-wrap;"};
+		return{html,className:data.self?"userMessage":"otherMessage",style:"white-space:pre-wrap;",sender:data.self?data.target:data.from,raw:data.message};
 	}
 	if(data.type==="image"){
 		let imgHtml=`<img src="${escapeHtml(data.image)}" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:4px;cursor:pointer;" onclick="window.open(this.src,'_blank')">`;
-		return{html:identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${imgHtml}`,className:data.username===currentUser?"userMessage":"otherMessage",style:""};
+		return{html:identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${imgHtml}`,className:data.username===currentUser?"userMessage":"otherMessage",style:"",sender:data.username,raw:data.message};
 	}
 	if(data.type==="voice"){
 		let audioHtml=`<audio controls src="${escapeHtml(data.voice)}" style="max-width:100%;"></audio>`;
-		return{html:identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${audioHtml}`,className:data.username===currentUser?"userMessage":"otherMessage",style:""};
+		return{html:identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${audioHtml}`,className:data.username===currentUser?"userMessage":"otherMessage",style:"",sender:data.username,raw:data.message};
 	}
 	let formatted=formatMarkdown(data.message||"");
 	let baseHtml=identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}): ${formatted}`;
 	let finalHtml=highlightMentions(baseHtml,currentUser);
-	return{html:finalHtml,className:data.username===currentUser?"userMessage":"otherMessage",style:"white-space:pre-wrap;"};
+	return{html:finalHtml,className:data.username===currentUser?"userMessage":"otherMessage",style:"white-space:pre-wrap;",sender:data.username,raw:data.message};
 }
 export function renderPoll(data){
 	let li=document.createElement("li");
