@@ -1313,6 +1313,36 @@ document.addEventListener("DOMContentLoaded",()=>{
             });
         });
     }
+    let previewBtn=document.createElement("button");
+    previewBtn.id="previewBtn";
+    previewBtn.textContent="Preview";
+    previewBtn.title="Toggle markdown preview";
+    previewBtn.style.cssText="height:var(--button-height);padding:0 .6rem;font-size:var(--button-font-size);background-color:var(--button-bg);border:1px solid var(--border-card);border-radius:var(--border-radius);cursor:pointer;color:var(--text-primary);";
+    let previewPane=document.createElement("div");
+    previewPane.id="previewPane";
+    previewPane.className="markdown-preview-pane";
+    previewPane.style.display="none";
+    let inputActionsEl=document.getElementById("inputActions");
+    if(inputActionsEl){
+        inputActionsEl.insertBefore(previewBtn,inputActionsEl.firstChild);
+        inputActionsEl.appendChild(previewPane);
+    }
+    function updatePreview(){
+        previewPane.innerHTML=formatMarkdown(userMessage.value||"");
+        addCodeBlockCopyButtons(previewPane);
+    }
+    previewBtn.addEventListener("click",()=>{
+        let visible=previewPane.style.display!=="none";
+        previewPane.style.display=visible?"none":"block";
+        if(!visible){
+            updatePreview();
+        }
+    });
+    userMessage.addEventListener("input",()=>{
+        if(previewPane.style.display!=="none"){
+            updatePreview();
+        }
+    });
     userMessage.addEventListener("keydown",(e)=>{
         if(e.ctrlKey&&e.key==="b"){
             e.preventDefault();
