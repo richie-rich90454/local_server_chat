@@ -8,7 +8,7 @@ export function createWebSocketServer(portWS,localIP){
 	const rooms=new Map();
 	for(const name of DEFAULT_ROOMS){rooms.set(name,{name,members:new Set()});}
 	let pollIdCounter=0;
-	const activePolls=new Map();
+	const activePolls=[];
 	let stats={messagesTotal:0,messageTimestamps:[],filesTransferred:0,startTime:Date.now()};
 	function recordMessage(){
 		stats.messagesTotal++;
@@ -43,17 +43,29 @@ export function createWebSocketServer(portWS,localIP){
 	}
 	function getPollsForRoom(roomName){
 		let polls=[];
-		for(const[poll]of activePolls){
+		for(const poll of activePolls){
 			if(poll.room===roomName&&poll.active){
 				polls.push({id:poll.id,question:poll.question,options:poll.options.map((o,i)=>({text:o,votes:poll.votes.filter(v=>v===i).length})),totalVotes:poll.votes.length,createdBy:poll.createdBy});
 			}
 		}
 		return polls;
 	}
+	function pruneClosedPolls(){
+		for(let i=activePolls.length-1;i>=0;i--){
+			if(!activePolls[i].active){
+				activePolls.splice(i,1);
+			}
+		}
+	}
 	function handleMessage(ws,data){
 		if(!data){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Invalid message format."}));return;}
 		switch(data.type){
 			case MSG.JOIN:{
+				if(!data.username||typeof data.username!=="string"||data.username.trim()===""){
+					ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Username is required."}));
+					ws.close(1008,"Username required");
+					return;
+				}
 				if(usernameToWs.has(data.username)){
 					ws.send(JSON.stringify({type:MSG.SYSTEM,message:`Username "${data.username}" is already taken.`}));
 					ws.close(1008,"Username taken");
@@ -94,17 +106,21 @@ export function createWebSocketServer(portWS,localIP){
 				break;
 			}
 			case MSG.CREATE_POLL:{
+				if(!ws.username){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Join first before creating a poll."}));return;}
 				if(!data.question||!data.options||data.options.length<2){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Poll needs a question and at least 2 options."}));return;}
+				pruneClosedPolls();
 				let pollId=++pollIdCounter;
 				let poll={id:pollId,question:data.question.substring(0,200),options:data.options.map(o=>o.substring(0,100)).slice(0,10),votes:[],votedBy:new Set(),createdBy:ws.username||"Anonymous",room:ws.room||"General",active:true,createdAt:Date.now()};
-				activePolls.set(poll,poll);
+				activePolls.push(poll);
 				broadcastToRoom(ws.room||"General",{type:MSG.POLL_CREATED,id:pollId,question:poll.question,options:poll.options.map((o,i)=>({text:o,votes:0})),totalVotes:0,createdBy:poll.createdBy});
 				break;
 			}
 			case MSG.VOTE:{
+				if(!ws.username){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Join first before voting."}));return;}
 				if(!data.pollId||data.option===undefined){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Invalid vote."}));return;}
+				pruneClosedPolls();
 				let targetPoll=null;
-				for(const[poll]of activePolls){if(poll.id===data.pollId){targetPoll=poll;break;}}
+				for(const poll of activePolls){if(poll.id===data.pollId){targetPoll=poll;break;}}
 				if(!targetPoll||!targetPoll.active){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Poll not found or closed."}));return;}
 				if(targetPoll.votedBy.has(ws)){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"You already voted."}));return;}
 				if(data.option<0||data.option>=targetPoll.options.length){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Invalid option."}));return;}
@@ -115,7 +131,8 @@ export function createWebSocketServer(portWS,localIP){
 			}
 			case MSG.CLOSE_POLL:{
 				if(!data.pollId){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Invalid poll ID."}));return;}
-				for(const[poll]of activePolls){
+				pruneClosedPolls();
+				for(const poll of activePolls){
 					if(poll.id===data.pollId&&poll.createdBy===ws.username){
 						poll.active=false;
 						broadcastToRoom(poll.room,{type:MSG.POLL_CLOSED,id:poll.id,question:poll.question,options:poll.options.map((o,i)=>({text:o,votes:poll.votes.filter(v=>v===i).length})),totalVotes:poll.votes.length});
@@ -129,7 +146,8 @@ export function createWebSocketServer(portWS,localIP){
 				break;
 			}
 			case MSG.TYPING:{
-				clients.forEach(client=>{if(client!==ws&&client.readyState===WebSocket.OPEN){client.send(JSON.stringify({type:MSG.TYPING,username:data.username,typing:data.typing}));}});
+				const room=ws.room||"General";
+				clients.forEach(client=>{if(client!==ws&&client.readyState===WebSocket.OPEN&&client.room===room){client.send(JSON.stringify({type:MSG.TYPING,username:ws.username||data.username,typing:data.typing}));}});
 				break;
 			}
 			case MSG.GET_USERS:{
@@ -150,16 +168,21 @@ export function createWebSocketServer(portWS,localIP){
 				break;
 			}
 			case MSG.PRIVATE:{
-				if(!checkRateAndBan(data.username)){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"You are temporarily banned for spamming."}));return;}
+				if(!ws.username){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Join first before sending private messages."}));return;}
+				if(!data.target||!data.message){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Invalid private message."}));return;}
+				if(!checkRateAndBan(ws.username)){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"You are temporarily banned for spamming."}));return;}
 				const targetWs=usernameToWs.get(data.target);
 				if(!targetWs||targetWs.readyState!==WebSocket.OPEN){ws.send(JSON.stringify({type:MSG.SYSTEM,message:`User "${data.target}" is not online.`}));return;}
-				targetWs.send(JSON.stringify({type:MSG.PRIVATE,from:data.username,message:data.message,ip:ws.clientIP||"Unknown",timestamp:data.timestamp}));
-				ws.send(JSON.stringify({type:MSG.PRIVATE,self:true,target:data.target,from:data.username,message:data.message,ip:ws.clientIP||"Unknown",timestamp:data.timestamp}));
+				targetWs.send(JSON.stringify({type:MSG.PRIVATE,from:ws.username,message:data.message,ip:ws.clientIP||"Unknown",timestamp:data.timestamp}));
+				ws.send(JSON.stringify({type:MSG.PRIVATE,self:true,target:data.target,from:ws.username,message:data.message,ip:ws.clientIP||"Unknown",timestamp:data.timestamp}));
 				break;
 			}
 			case MSG.NICK:{
 				let oldName=data.oldUsername;
 				let newName=data.newUsername;
+				if(!ws.username){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Join first before changing your name."}));return;}
+				if(oldName!==ws.username){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Nick change rejected."}));return;}
+				if(!newName||typeof newName!=="string"||newName.trim()===""){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Invalid username."}));return;}
 				if(usernameToWs.has(newName)){ws.send(JSON.stringify({type:MSG.SYSTEM,message:`Username "${newName}" is already taken.`}));return;}
 				usernameToWs.delete(oldName);
 				ws.username=newName;
@@ -188,9 +211,11 @@ export function createWebSocketServer(portWS,localIP){
 				break;
 			}
 			default:{
-				if(!checkRateAndBan(data.username)){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"You are temporarily banned."}));return;}
+				if(!ws.username){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Join first before sending messages."}));return;}
+				if(!data.message){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"Message cannot be empty."}));return;}
+				if(!checkRateAndBan(ws.username)){ws.send(JSON.stringify({type:MSG.SYSTEM,message:"You are temporarily banned."}));return;}
 				recordMessage();
-				const broadcastMsg={username:data.username,message:data.message,ip:ws.clientIP||"Unknown",room:ws.room};
+				const broadcastMsg={username:ws.username,message:data.message,ip:ws.clientIP||"Unknown",room:ws.room};
 				const room=rooms.get(ws.room||"General");
 				if(room){
 					clients.forEach(client=>{
