@@ -420,8 +420,32 @@ document.addEventListener("DOMContentLoaded",()=>{
         closeBtn.onclick=closeSettings;
         box.appendChild(closeBtn);
         overlay.appendChild(box);
+        overlay.setAttribute("tabindex","-1");
         overlay.addEventListener("click",(e)=>{if(e.target===overlay){closeSettings();}});
+        overlay.addEventListener("keydown",(e)=>{
+            if(e.key==="Escape"){
+                closeSettings();
+                return;
+            }
+            if(e.key==="Tab"){
+                let focusables=box.querySelectorAll("button, input, select, textarea, [tabindex]");
+                let list=Array.from(focusables).filter(el=>!el.disabled&&el.offsetParent!==null);
+                if(list.length===0)return;
+                let first=list[0];
+                let last=list[list.length-1];
+                if(e.shiftKey&&document.activeElement===first){
+                    e.preventDefault();
+                    last.focus();
+                }
+                else if(!e.shiftKey&&document.activeElement===last){
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
+        });
         document.body.appendChild(overlay);
+        let firstControl=box.querySelector("select, button, input");
+        if(firstControl)firstControl.focus();
         updateSessionStats();
         settingsOverlay=overlay;
     }
