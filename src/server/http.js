@@ -1,27 +1,11 @@
 import express from"express";
-import path from"path";
 import{Filter}from"bad-words";
+import{createStaticMiddleware}from"./static.js";
 import{PROTOCOL_VERSION}from"../protocol/constants.js";
-function getDistDir(){
-	let scriptDir=path.dirname(process.argv[1]||".");
-	if(path.basename(process.argv[0]||"")==="node"||path.basename(process.argv[0]||"")==="node.exe"){
-		return path.join(scriptDir,"dist");
-	}
-	return path.join(path.dirname(process.execPath),"dist");
-}
 export function createHttpServer(localIP,portUI,portWS,serverName,joinCode,joinCodeMap){
 	const app=express();
 	app.use(express.json());
-	app.use(express.static(getDistDir(),{
-		maxAge:"1h",
-		etag:true,
-		lastModified:true,
-		setHeaders(res,filePath){
-			if(filePath.endsWith("sw.js")||filePath.endsWith("index.html")){
-				res.setHeader("Cache-Control","no-cache");
-			}
-		}
-	}));
+	app.use(createStaticMiddleware());
 	app.get("/get-client-ip",(req,res)=>{
 		let ip=req.headers["x-forwarded-for"]||req.socket.remoteAddress;
 		if(ip&&ip.includes("::ffff:")){
