@@ -204,6 +204,156 @@ document.addEventListener("DOMContentLoaded",()=>{
         }
         playMessageSound();
     }
+    let settingsOverlay=null;
+    function applyLanguage(){}
+    function settingsRow(labelText,controlEl){
+        let row=document.createElement("div");
+        row.style.cssText="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:0.4rem 0;";
+        let label=document.createElement("span");
+        label.style.cssText="color:var(--text-primary);font-size:0.9rem;";
+        label.textContent=labelText;
+        row.appendChild(label);
+        row.appendChild(controlEl);
+        return row;
+    }
+    function closeSettings(){
+        if(settingsOverlay){
+            settingsOverlay.remove();
+            settingsOverlay=null;
+        }
+    }
+    function openSettings(){
+        closeSettings();
+        let overlay=document.createElement("div");
+        overlay.style.cssText="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:2000;";
+        let box=document.createElement("div");
+        box.style.cssText="background:var(--background-card);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:1rem;max-width:520px;width:92%;max-height:85vh;overflow-y:auto;box-shadow:0 4px 20px var(--box-shadow);";
+        let title=document.createElement("h3");
+        title.textContent="Settings";
+        title.style.cssText="margin:0 0 .5rem 0;color:var(--text-primary);";
+        box.appendChild(title);
+        function mkSelect(options,value){
+            let sel=document.createElement("select");
+            sel.style.cssText="background:var(--button-bg);color:var(--text-primary);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:.2rem .4rem;";
+            for(let o of options){
+                let opt=document.createElement("option");
+                opt.value=o[0];
+                opt.textContent=o[1];
+                sel.appendChild(opt);
+            }
+            sel.value=value;
+            return sel;
+        }
+        function mkCheckbox(checked){
+            let cb=document.createElement("input");
+            cb.type="checkbox";
+            cb.checked=checked;
+            cb.style.cssText="accent-color:var(--message-user);";
+            return cb;
+        }
+        let langSel=mkSelect([["en","EN"],["es","ES"],["fr","FR"],["de","DE"],["zh","ZH"]],prefs.lang);
+        langSel.onchange=()=>{prefs.lang=langSel.value;savePrefs();applyLanguage();};
+        box.appendChild(settingsRow("Language",langSel));
+        let densitySel=mkSelect([["comfortable","Comfortable"],["compact","Compact"]],prefs.density);
+        densitySel.onchange=()=>{prefs.density=densitySel.value;savePrefs();applyPrefs();};
+        box.appendChild(settingsRow("Message density",densitySel));
+        let sizeSel=mkSelect([["small","Small"],["normal","Normal"],["large","Large"]],prefs.textSize);
+        sizeSel.onchange=()=>{prefs.textSize=sizeSel.value;savePrefs();applyPrefs();};
+        box.appendChild(settingsRow("Text size",sizeSel));
+        let soundBox=mkCheckbox(prefs.sound);
+        soundBox.onchange=()=>{prefs.sound=soundBox.checked;savePrefs();};
+        box.appendChild(settingsRow("Message sound",soundBox));
+        let focusBox=mkCheckbox(prefs.focusMode);
+        focusBox.onchange=()=>{prefs.focusMode=focusBox.checked;savePrefs();};
+        box.appendChild(settingsRow("Focus mode (messages only)",focusBox));
+        let motionBox=mkCheckbox(prefs.reduceMotion);
+        motionBox.onchange=()=>{prefs.reduceMotion=motionBox.checked;savePrefs();applyPrefs();};
+        box.appendChild(settingsRow("Reduce motion",motionBox));
+        let wrapBox=mkCheckbox(prefs.wrapCode);
+        wrapBox.onchange=()=>{prefs.wrapCode=wrapBox.checked;savePrefs();applyPrefs();};
+        box.appendChild(settingsRow("Wrap long code lines",wrapBox));
+        let accentInput=document.createElement("input");
+        accentInput.type="color";
+        accentInput.value=prefs.accent||"#EC1414";
+        accentInput.style.cssText="background:var(--button-bg);border:1px solid var(--border-card);border-radius:var(--border-radius);width:3rem;padding:0;";
+        accentInput.onchange=()=>{prefs.accent=accentInput.value;savePrefs();applyPrefs();};
+        box.appendChild(settingsRow("Accent color",accentInput));
+        let dndRow=document.createElement("div");
+        dndRow.style.cssText="display:flex;gap:.3rem;";
+        for(let m of [[0,"Off"],[5,"5m"],[30,"30m"],[60,"60m"]]){
+            let b=document.createElement("button");
+            b.textContent=m[1];
+            b.style.cssText="background:var(--button-bg);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:.15rem .5rem;color:var(--text-primary);cursor:pointer;font-size:.8rem;";
+            b.onclick=()=>{prefs.dndUntil=m[0]===0?0:Date.now()+m[0]*60000;savePrefs();};
+            dndRow.appendChild(b);
+        }
+        box.appendChild(settingsRow("Do not disturb",dndRow));
+        let e2eBox=mkCheckbox(prefs.e2e);
+        e2eBox.onchange=()=>{prefs.e2e=e2eBox.checked;savePrefs();};
+        let e2ePassInput=document.createElement("input");
+        e2ePassInput.type="password";
+        e2ePassInput.value=prefs.e2ePass;
+        e2ePassInput.placeholder="Shared encryption password";
+        e2ePassInput.style.cssText="background:var(--button-bg);color:var(--text-primary);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:.2rem .4rem;width:12rem;";
+        e2ePassInput.onchange=()=>{prefs.e2ePass=e2ePassInput.value;savePrefs();};
+        box.appendChild(settingsRow("End-to-end encryption",e2eBox));
+        box.appendChild(settingsRow("Encryption password",e2ePassInput));
+        let wordsArea=document.createElement("textarea");
+        wordsArea.style.cssText="background:var(--button-bg);color:var(--text-primary);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:.3rem;width:12rem;height:3rem;resize:vertical;";
+        wordsArea.value=(prefs.blockedWords||[]).join("\n");
+        wordsArea.placeholder="Blocked words (one per line)";
+        wordsArea.oninput=()=>{
+            prefs.blockedWords=wordsArea.value.split("\n").map(s=>s.trim()).filter(s=>s.length>0);
+            savePrefs();
+            applyVisibilityFilters();
+        };
+        box.appendChild(settingsRow("Word filter",wordsArea));
+        let ignoredDiv=document.createElement("div");
+        ignoredDiv.style.cssText="display:flex;flex-direction:column;gap:.2rem;max-height:6rem;overflow-y:auto;width:12rem;";
+        function renderIgnored(){
+            ignoredDiv.innerHTML="";
+            let list=prefs.ignoredUsers||[];
+            for(let name of list){
+                let row=document.createElement("div");
+                row.style.cssText="display:flex;justify-content:space-between;align-items:center;gap:.3rem;font-size:.85rem;color:var(--text-primary);";
+                let span=document.createElement("span");
+                span.textContent=name;
+                row.appendChild(span);
+                let unBtn=document.createElement("button");
+                unBtn.textContent="Unignore";
+                unBtn.style.cssText="background:var(--button-bg);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:.05rem .4rem;color:var(--text-primary);cursor:pointer;font-size:.7rem;";
+                unBtn.onclick=()=>{
+                    prefs.ignoredUsers=prefs.ignoredUsers.filter(n=>n!==name);
+                    savePrefs();
+                    renderIgnored();
+                    applyVisibilityFilters();
+                };
+                row.appendChild(unBtn);
+                ignoredDiv.appendChild(row);
+            }
+            if(list.length===0){
+                let empty=document.createElement("span");
+                empty.textContent="None";
+                empty.style.cssText="color:var(--text-secondary);font-size:.85rem;";
+                ignoredDiv.appendChild(empty);
+            }
+        }
+        renderIgnored();
+        box.appendChild(settingsRow("Ignored users",ignoredDiv));
+        let statsLine=document.createElement("div");
+        statsLine.id="sessionStats";
+        statsLine.style.cssText="margin-top:.5rem;color:var(--text-secondary);font-size:.8rem;";
+        box.appendChild(statsLine);
+        let closeBtn=document.createElement("button");
+        closeBtn.textContent="Close";
+        closeBtn.style.cssText="margin-top:.8rem;padding:.3rem 1rem;background:var(--button-bg);border:1px solid var(--border-card);border-radius:var(--border-radius);cursor:pointer;color:var(--text-primary);";
+        closeBtn.onclick=closeSettings;
+        box.appendChild(closeBtn);
+        overlay.appendChild(box);
+        overlay.addEventListener("click",(e)=>{if(e.target===overlay){closeSettings();}});
+        document.body.appendChild(overlay);
+        settingsOverlay=overlay;
+    }
 
     function createRoomUI(){
         let headerControls=document.getElementById("headerControls");
@@ -1186,6 +1336,10 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(!savedTheme){savedTheme=getSystemTheme();}
     applyTheme(savedTheme);
     let themeToggleElem=document.getElementById("themeToggle");
+    let settingsBtnEl=document.getElementById("settingsBtn");
+    if(settingsBtnEl){
+        settingsBtnEl.addEventListener("click",openSettings);
+    }
     if(themeToggleElem){
         themeToggleElem.addEventListener("click",()=>{
             let cur=document.body.getAttribute("data-theme");
