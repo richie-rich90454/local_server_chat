@@ -917,6 +917,9 @@ document.addEventListener("DOMContentLoaded",()=>{
         if(data.type==="onlineCount"){
             let span=document.getElementById("onlineCount");
             if(span){span.textContent=`(${data.count} online)`;}
+            if(connStatus&&connStatus.classList.contains("connected")){
+                connStatus.textContent=`Connected · ${data.count} online`;
+            }
             return;
         }
         if(data.type==="typing"){
@@ -1218,11 +1221,9 @@ document.addEventListener("DOMContentLoaded",()=>{
                 if(!intentionalClose&&currentUser&&chatPage.style.display==="block"){
                     showChatError(chatErrorDiv,"Connection lost. Reconnecting...");
                     clearTimeout(reconnectTimer);
-                    reconnectTimer=setTimeout(()=>{
-                        reconnectAttempts++;
-                        let delay=Math.min(3000,1000*Math.pow(1.5,reconnectAttempts));
-                        setTimeout(connect,delay);
-                    },3000);
+                    reconnectAttempts++;
+                    let delay=Math.min(3000,1000*Math.pow(1.5,reconnectAttempts));
+                    reconnectTimer=setTimeout(()=>{connect();},delay);
                 }
             },
             onError: (e)=>console.error(e)
@@ -1851,13 +1852,13 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
     setTimeout(()=>{
         if(socket&&socket.readyState===WebSocket.OPEN){
-            initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml);
+            initFileHandlers(()=>socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml);
         }
         else{
             const checkSocket=setInterval(()=>{
                 if(socket&&socket.readyState===WebSocket.OPEN){
                     clearInterval(checkSocket);
-                    initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml);
+                    initFileHandlers(()=>socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml);
                 }
             },100);
         }
