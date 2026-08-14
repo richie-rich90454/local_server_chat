@@ -323,6 +323,13 @@ export async function createChessGame(container, options={}){
     const Chess=chessModule.Chess||chessModule.default;
     game=new Chess();
     const chessWorker=new Worker(new URL('./chess-worker.js', import.meta.url),{type:'module'});
+    function endGame(result){
+        if(!gameActive) return;
+        gameActive=false;
+        statusDiv.textContent=result;
+        if(options.onGameEnd) options.onGameEnd(result);
+        chessWorker.terminate();
+    }
     function renderBoard(){
         let board=game.board();
         boardDiv.innerHTML="";
@@ -362,16 +369,13 @@ export async function createChessGame(container, options={}){
                         if(move){
                             selectedSquare=null;
                             renderBoard();
-                            if(game.game_over()){
-                                let result=game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over");
-                                statusDiv.textContent=result;
-                                gameActive=false;
-                                if(options.onGameEnd) options.onGameEnd(result);
-                            }
-                            else{
-                                statusDiv.textContent="Computer is thinking...";
-                                makeAIMove();
-                            }
+                        if(game.game_over()){
+                            endGame(game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over"));
+                        }
+                        else{
+                            statusDiv.textContent="Computer is thinking...";
+                            makeAIMove();
+                        }
                         }
                         else{
                             selectedSquare=null;
@@ -383,10 +387,7 @@ export async function createChessGame(container, options={}){
             }
         }
         if(game.game_over()){
-            let result=game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over");
-            statusDiv.textContent=result;
-            gameActive=false;
-            if(options.onGameEnd) options.onGameEnd(result);
+            endGame(game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over"));
         }
     }
     function makeAIMove(){
@@ -401,10 +402,7 @@ export async function createChessGame(container, options={}){
                 game.move(bestMove);
                 renderBoard();
                 if(game.game_over()){
-                    let result=game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over");
-                    statusDiv.textContent=result;
-                    gameActive=false;
-                    if(options.onGameEnd) options.onGameEnd(result);
+                    endGame(game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over"));
                 }
                 else{
                     statusDiv.textContent="Your turn";
@@ -420,11 +418,7 @@ export async function createChessGame(container, options={}){
     statusDiv.textContent="Your turn (White)";
     renderBoard();
     resignBtn.onclick=()=>{
-        if(!gameActive) return;
-        gameActive=false;
-        let result=(playerColor==='w')?"Black wins by resignation":"White wins by resignation";
-        statusDiv.textContent=result;
-        if(options.onGameEnd) options.onGameEnd(result);
+        endGame((playerColor==='w')?"Black wins by resignation":"White wins by resignation");
     };
     container._cleanup=()=>{
         chessWorker.terminate();
@@ -493,12 +487,12 @@ export function processCommand(msg,currentUser,socket,clientRealIP,chatPage,user
         return true;
     }
     if(msg==="/chess"){
-        if(document.getElementById("chessOverlay")){
+        if(document.getElementById("chessOverlay")||document.getElementById("chessSetupOverlay")){
             showChatError(chatErrorDiv,"Chess game is already open");
             return true;
         }
         let overlay=document.createElement("div");
-        overlay.id="chessOverlay";
+        overlay.id="chessSetupOverlay";
         overlay.style.cssText="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1001;";
         let modal=document.createElement("div");
         modal.style.cssText="background:var(--background-card);border:2px solid var(--border-card);border-radius:.5rem;padding:1rem;max-width:500px;width:90%;box-shadow:0 4px 20px var(--box-shadow);";
