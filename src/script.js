@@ -886,6 +886,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     userMessage.addEventListener("dragover",(e)=>e.preventDefault());
     userMessage.addEventListener("drop",async(e)=>{
         e.preventDefault();
+        e.stopPropagation();
         let file=e.dataTransfer.files[0];
         if(!file){return;}
         if(!file.type.startsWith("image/")){
