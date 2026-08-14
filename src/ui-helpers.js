@@ -73,19 +73,11 @@ export function updateTypingIndicatorUI(currentTypers,typingIndicatorDiv){
     if(!typingIndicatorDiv){return;}
     let arr=Array.from(currentTypers);
     if(arr.length===0){typingIndicatorDiv.textContent="";}
-    else if(arr.length===1){typingIndicatorDiv.textContent=`${escapeHtml(arr[0])} is typing...`;}
+    else if(arr.length===1){typingIndicatorDiv.textContent=`${arr[0]} is typing...`;}
     else{
         let last=arr.pop();
-        typingIndicatorDiv.textContent=`${arr.map(escapeHtml).join(", ")} and ${escapeHtml(last)} are typing...`;
+        typingIndicatorDiv.textContent=`${arr.join(", ")} and ${last} are typing...`;
     }
-}
-function escapeHtml(str){
-    return str.replace(/[&<>]/g,function(m){
-        if(m=="&"){return "&amp;";}
-        if(m=="<"){return "&lt;";}
-        if(m==">"){return "&gt;";}
-        return m;
-    });
 }
 export function wrapSelection(textarea,before,after){
     let start=textarea.selectionStart;
