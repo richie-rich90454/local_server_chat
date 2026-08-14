@@ -25,9 +25,14 @@ export function getDistDir(){
 	}
 	return path.join(path.dirname(process.execPath),"dist");
 }
+function isSea(){
+	const name=path.basename(process.argv[0]||"");
+	return name!=="node"&&name!=="node.exe";
+}
 export function createStaticMiddleware(){
+	const sea=isSea();
 	const distDir=getDistDir();
-	const disk=fs.existsSync(distDir);
+	const disk=!sea&&fs.existsSync(distDir);
 	return function(req,res,next){
 		if(disk){
 			express.static(distDir,{maxAge:"1h",etag:true,lastModified:true,setHeaders(res,filePath){
