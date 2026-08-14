@@ -727,6 +727,29 @@ document.addEventListener("DOMContentLoaded",()=>{
             ta.remove();
         }
     }
+    function addCodeBlockCopyButtons(container){
+        let pres=container.querySelectorAll("pre");
+        for(let pre of pres){
+            let wrap=pre.parentNode;
+            let containerDiv=(wrap&&wrap.classList&&wrap.classList.contains("code-block-container"))?wrap:null;
+            if(!containerDiv){
+                containerDiv=document.createElement("div");
+                containerDiv.className="code-block-container";
+                pre.parentNode.insertBefore(containerDiv,pre);
+                containerDiv.appendChild(pre);
+            }
+            if(containerDiv.querySelector(".code-copy-btn"))continue;
+            let btn=document.createElement("button");
+            btn.className="code-copy-btn";
+            btn.textContent="Copy";
+            let codeEl=pre.querySelector("code");
+            btn.onclick=(e)=>{
+                e.stopPropagation();
+                copyTextToClipboard(codeEl?codeEl.textContent:"");
+            };
+            containerDiv.insertBefore(btn,containerDiv.firstChild);
+        }
+    }
     let lastMessageDate="";
     let newMsgDividerShown=false;
     function maybeInsertDateDivider(){
@@ -977,6 +1000,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         li.style.display="flex";
         li.style.alignItems="flex-start";
         li.style.gap="0.3rem";
+        addCodeBlockCopyButtons(li);
         if(data.username===currentUser){li.classList.add("userMessage");}
         else{li.classList.add("otherMessage");}
         let replySpan=document.createElement("span");
