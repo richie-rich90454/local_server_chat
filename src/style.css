@@ -955,3 +955,90 @@ body[data-theme="dark"] #chessBoard div{
     margin-top:2px;
     text-align:right;
 }
+#connStatus{
+    font-size:0.75rem;
+    color:var(--text-secondary);
+    border:1px solid var(--border-card);
+    border-radius:var(--border-radius);
+    padding:0.15rem .5rem;
+    white-space:nowrap;
+}
+#connStatus.connected{
+    color:#2ecc71;
+}
+#connStatus.reconnecting{
+    color:#e67e22;
+}
+.search-hidden{
+    display:none!important;
+}
+body.density-compact #messages li{
+    margin:0.1rem 0;
+    padding:0.1rem 0;
+}
+body.density-compact #messages li .file-message{
+    margin-top:0.2rem;
+}
+body.wrap-code .code-block-container pre{
+    white-space:pre-wrap;
+    word-break:break-word;
+}
+body.reduce-motion *,
+body.reduce-motion *::before,
+body.reduce-motion *::after{
+    transition:none!important;
+    animation:none!important;
+}
+.msg-pinned{
+    border:1px solid var(--message-user);
+    border-radius:var(--border-radius);
+    padding:.2rem .4rem;
+    margin-bottom:.2rem;
+}
+.new-msg-divider{
+    display:flex;
+    align-items:center;
+    gap:.5rem;
+    color:var(--text-secondary);
+    font-size:.75rem;
+    margin:.3rem 0;
+}
+.new-msg-divider::before,
+.new-msg-divider::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:var(--border-card);
+}
+.msg-date-divider{
+    text-align:center;
+    color:var(--text-secondary);
+    font-size:.75rem;
+    margin:.4rem 0;
+    border-bottom:1px solid var(--border-card);
+    padding-bottom:.2rem;
+}
+.code-copy-btn{
+    float:right;
+    font-size:.7rem;
+    padding:.05rem .4rem;
+    background:var(--button-bg);
+    border:1px solid var(--border-card);
+    border-radius:var(--border-radius);
+    color:var(--text-primary);
+    cursor:pointer;
+}
+.code-copy-btn:hover{
+    opacity:.8;
+}
+.markdown-preview-pane{
+    background:var(--background-card);
+    border:1px solid var(--border-card);
+    border-radius:var(--border-radius);
+    padding:.4rem .6rem;
+    margin-top:.3rem;
+    max-height:12rem;
+    overflow-y:auto;
+    font-size:.9rem;
+    white-space:pre-wrap;
+}
