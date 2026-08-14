@@ -220,28 +220,59 @@ document.addEventListener("DOMContentLoaded",()=>{
         }
         catch(e){}
     }
-    function notifyMessage(data){
+    function notifyMessage(data,mention){
         if(document.hidden&&!inDnd()&&"Notification" in window&&Notification.permission==="granted"){
             try{
-                let body=String(data.message||"").slice(0,140);
-                let n=new Notification(data.username||"New message",{body:body||"(message)",icon:"/favicon-32x32.png"});
+                let body=(mention?"[Mention] ":"")+String(data.message||"").slice(0,140);
+                let n=new Notification((mention?"Mention: ":"")+(data.username||"New message"),{body:body||"(message)",icon:"/favicon-32x32.png"});
                 n.onclick=()=>{window.focus();n.close();};
             }
             catch(e){}
         }
     }
+    function playMentionSound(){
+        if(!prefs.sound||inDnd())return;
+        try{
+            let ctx=new(window.AudioContext||window.webkitAudioContext)();
+            let gain=ctx.createGain();
+            gain.gain.setValueAtTime(0.08,ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.4);
+            gain.connect(ctx.destination);
+            for(let f of [880,1320]){
+                let osc=ctx.createOscillator();
+                osc.type="sine";
+                osc.frequency.value=f;
+                osc.connect(gain);
+                osc.start(ctx.currentTime+(f===880?0:0.2));
+                osc.stop(ctx.currentTime+(f===880?0.2:0.4));
+            }
+        }
+        catch(e){}
+    }
+    function isMentionOfMe(data){
+        if(!currentUser)return false;
+        let msg=String(data.message||"");
+        let name=currentUser.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+        return new RegExp("@(?:\"|&quot;)?\\s*"+name+"(?:\\s*\"|&quot;)?","i").test(msg);
+    }
     function onIncomingMessage(data){
         if(!data||data.username===currentUser||data.username==="Anonymous")return;
         receivedCount++;
         updateSessionStats();
+        let mention=isMentionOfMe(data);
         if(document.hidden){
             bumpTitle();
-            notifyMessage(data);
+            notifyMessage(data,mention);
         }
         else{
             resetTitle();
         }
-        playMessageSound();
+        if(mention){
+            playMentionSound();
+        }
+        else{
+            playMessageSound();
+        }
     }
     let settingsOverlay=null;
     const I18N={
