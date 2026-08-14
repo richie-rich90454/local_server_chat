@@ -342,6 +342,9 @@ document.addEventListener("DOMContentLoaded",()=>{
         }
         return false;
     }
+    function isSafeMediaSrc(src){
+        return typeof src==="string"&&/^(data:|blob:)/.test(src);
+    }
     function addMessageToUI(data){
         if(data.type==="onlineCount"){
             let span=document.getElementById("onlineCount");
@@ -475,7 +478,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         if(data.type==="image"){
             let time=getCurrentTime();
             let ip=data.ip||clientRealIP||"Unknown";
-            let imgHtml=`<img src="${escapeHtml(data.image)}" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:4px;cursor:pointer;" onclick="window.open(this.src,'_blank')">`;
+            let imgHtml=isSafeMediaSrc(data.image)?`<img src="${escapeHtml(data.image)}" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:4px;cursor:pointer;" onclick="window.open(this.src,'_blank')">`:`<em>[Unsafe image blocked]</em>`;
             let identiconSvg=generateIdenticon(data.username,20);
             let identiconHtml=identiconSvg?identiconSvg.outerHTML+" ":"";
             let rawHtml=identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${imgHtml}`;
@@ -494,7 +497,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         if(data.type==="voice"){
             let time=getCurrentTime();
             let ip=data.ip||clientRealIP||"Unknown";
-            let audioHtml=`<audio controls src="${escapeHtml(data.voice)}" style="max-width:100%;"></audio>`;
+            let audioHtml=isSafeMediaSrc(data.voice)?`<audio controls src="${escapeHtml(data.voice)}" style="max-width:100%;"></audio>`:`<em>[Unsafe audio blocked]</em>`;
             let identiconSvg=generateIdenticon(data.username,20);
             let identiconHtml=identiconSvg?identiconSvg.outerHTML+" ":"";
             let rawHtml=identiconHtml+`${escapeHtml(data.username)} [${ip}] (${time}):<br> ${audioHtml}`;
