@@ -319,9 +319,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
     function settingsRow(labelText,controlEl){
         let row=document.createElement("div");
-        row.style.cssText="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:0.4rem 0;";
+        row.className="settings-row";
         let label=document.createElement("span");
-        label.style.cssText="color:var(--text-primary);font-size:0.9rem;";
+        label.className="settings-label";
         label.textContent=labelText;
         row.appendChild(label);
         row.appendChild(controlEl);
@@ -336,16 +336,16 @@ document.addEventListener("DOMContentLoaded",()=>{
     function openSettings(){
         closeSettings();
         let overlay=document.createElement("div");
-        overlay.style.cssText="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:2000;";
+        overlay.className="settings-overlay";
         let box=document.createElement("div");
-        box.style.cssText="background:var(--background-card);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:1rem;max-width:520px;width:92%;max-height:85vh;overflow-y:auto;box-shadow:0 4px 20px var(--box-shadow);";
+        box.className="settings-box";
         let title=document.createElement("h3");
         title.textContent="Settings";
-        title.style.cssText="margin:0 0 .5rem 0;color:var(--text-primary);";
+        title.className="settings-title";
         box.appendChild(title);
         function mkSelect(options,value){
             let sel=document.createElement("select");
-            sel.style.cssText="background:var(--button-bg);color:var(--text-primary);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:.2rem .4rem;";
+            sel.className="settings-select";
             for(let o of options){
                 let opt=document.createElement("option");
                 opt.value=o[0];
@@ -359,7 +359,6 @@ document.addEventListener("DOMContentLoaded",()=>{
             let cb=document.createElement("input");
             cb.type="checkbox";
             cb.checked=checked;
-            cb.style.cssText="accent-color:var(--message-user);";
             return cb;
         }
         let langSel=mkSelect([["en","EN"],["es","ES"],["fr","FR"],["de","DE"],["zh","ZH"]],prefs.lang);
@@ -389,15 +388,14 @@ document.addEventListener("DOMContentLoaded",()=>{
         let accentInput=document.createElement("input");
         accentInput.type="color";
         accentInput.value=prefs.accent||"#EC1414";
-        accentInput.style.cssText="background:var(--button-bg);border:1px solid var(--border-card);border-radius:var(--border-radius);width:3rem;padding:0;";
         accentInput.onchange=()=>{prefs.accent=accentInput.value;savePrefs();applyPrefs();};
         box.appendChild(settingsRow("Accent color",accentInput));
         let dndRow=document.createElement("div");
-        dndRow.style.cssText="display:flex;gap:.3rem;";
+        dndRow.style.cssText="display:flex;gap:.3rem;flex-wrap:wrap;";
         for(let m of [[0,"Off"],[5,"5m"],[30,"30m"],[60,"60m"]]){
             let b=document.createElement("button");
+            b.className="settings-chip";
             b.textContent=m[1];
-            b.style.cssText="background:var(--button-bg);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:.15rem .5rem;color:var(--text-primary);cursor:pointer;font-size:.8rem;";
             b.onclick=()=>{prefs.dndUntil=m[0]===0?0:Date.now()+m[0]*60000;savePrefs();};
             dndRow.appendChild(b);
         }
@@ -406,14 +404,14 @@ document.addEventListener("DOMContentLoaded",()=>{
         e2eBox.onchange=()=>{prefs.e2e=e2eBox.checked;savePrefs();};
         let e2ePassInput=document.createElement("input");
         e2ePassInput.type="password";
+        e2ePassInput.className="settings-input";
         e2ePassInput.value=prefs.e2ePass;
         e2ePassInput.placeholder="Shared encryption password";
-        e2ePassInput.style.cssText="background:var(--button-bg);color:var(--text-primary);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:.2rem .4rem;width:12rem;";
         e2ePassInput.onchange=()=>{prefs.e2ePass=e2ePassInput.value;savePrefs();deriveE2EKey();};
         box.appendChild(settingsRow("End-to-end encryption",e2eBox));
         box.appendChild(settingsRow("Encryption password",e2ePassInput));
         let wordsArea=document.createElement("textarea");
-        wordsArea.style.cssText="background:var(--button-bg);color:var(--text-primary);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:.3rem;width:12rem;height:3rem;resize:vertical;";
+        wordsArea.className="settings-textarea";
         wordsArea.value=(prefs.blockedWords||[]).join("\n");
         wordsArea.placeholder="Blocked words (one per line)";
         wordsArea.oninput=()=>{
@@ -423,7 +421,7 @@ document.addEventListener("DOMContentLoaded",()=>{
         };
         box.appendChild(settingsRow("Word filter",wordsArea));
         let ignoredDiv=document.createElement("div");
-        ignoredDiv.style.cssText="display:flex;flex-direction:column;gap:.2rem;max-height:6rem;overflow-y:auto;width:12rem;";
+        ignoredDiv.className="settings-ignored";
         function renderIgnored(){
             ignoredDiv.innerHTML="";
             let list=prefs.ignoredUsers||[];
@@ -434,8 +432,8 @@ document.addEventListener("DOMContentLoaded",()=>{
                 span.textContent=name;
                 row.appendChild(span);
                 let unBtn=document.createElement("button");
+                unBtn.className="settings-unignore";
                 unBtn.textContent="Unignore";
-                unBtn.style.cssText="background:var(--button-bg);border:1px solid var(--border-card);border-radius:var(--border-radius);padding:.05rem .4rem;color:var(--text-primary);cursor:pointer;font-size:.7rem;";
                 unBtn.onclick=()=>{
                     prefs.ignoredUsers=prefs.ignoredUsers.filter(n=>n!==name);
                     savePrefs();
@@ -456,11 +454,11 @@ document.addEventListener("DOMContentLoaded",()=>{
         box.appendChild(settingsRow("Ignored users",ignoredDiv));
         let statsLine=document.createElement("div");
         statsLine.id="sessionStats";
-        statsLine.style.cssText="margin-top:.5rem;color:var(--text-secondary);font-size:.8rem;";
+        statsLine.className="settings-stats";
         box.appendChild(statsLine);
         let closeBtn=document.createElement("button");
+        closeBtn.className="settings-close";
         closeBtn.textContent="Close";
-        closeBtn.style.cssText="margin-top:.8rem;padding:.3rem 1rem;background:var(--button-bg);border:1px solid var(--border-card);border-radius:var(--border-radius);cursor:pointer;color:var(--text-primary);";
         closeBtn.onclick=closeSettings;
         box.appendChild(closeBtn);
         overlay.appendChild(box);
@@ -1464,9 +1462,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
     let previewBtn=document.createElement("button");
     previewBtn.id="previewBtn";
+    previewBtn.className="preview-btn";
     previewBtn.textContent="Preview";
     previewBtn.title="Toggle markdown preview";
-    previewBtn.style.cssText="height:var(--button-height);padding:0 .6rem;font-size:var(--button-font-size);background-color:var(--button-bg);border:1px solid var(--border-card);border-radius:var(--border-radius);cursor:pointer;color:var(--text-primary);";
     let previewPane=document.createElement("div");
     previewPane.id="previewPane";
     previewPane.className="markdown-preview-pane";
