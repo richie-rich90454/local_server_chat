@@ -1504,6 +1504,16 @@ document.addEventListener("DOMContentLoaded",()=>{
             e.preventDefault();
             wrapSelection(userMessage,"`","`");
         }
+        else if(e.key==="Tab"){
+            e.preventDefault();
+            let start=userMessage.selectionStart;
+            let end=userMessage.selectionEnd;
+            let val=userMessage.value;
+            userMessage.value=val.substring(0,start)+"\t"+val.substring(end);
+            userMessage.selectionStart=start+1;
+            userMessage.selectionEnd=start+1;
+            userMessage.focus();
+        }
         else if(e.key==="ArrowUp"&&!e.shiftKey&&!e.altKey){
             if(inputHistory.length===0)return;
             if(historyIndex===inputHistory.length&&userMessage.value.trim()!=="")return;
