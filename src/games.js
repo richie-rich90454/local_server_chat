@@ -1,3 +1,4 @@
+import{showChatError}from"./ui-helpers.js";
 let unlockCount=localStorage.getItem("unlockCount")?parseInt(localStorage.getItem("unlockCount")):0;
 let developerMode=false;
 export function getUnlockCount(){return unlockCount;}
@@ -322,6 +323,13 @@ export async function createChessGame(container, options={}){
     const Chess=chessModule.Chess||chessModule.default;
     game=new Chess();
     const chessWorker=new Worker(new URL('./chess-worker.js', import.meta.url),{type:'module'});
+    function endGame(result){
+        if(!gameActive) return;
+        gameActive=false;
+        statusDiv.textContent=result;
+        if(options.onGameEnd) options.onGameEnd(result);
+        chessWorker.terminate();
+    }
     function renderBoard(){
         let board=game.board();
         boardDiv.innerHTML="";
@@ -361,16 +369,13 @@ export async function createChessGame(container, options={}){
                         if(move){
                             selectedSquare=null;
                             renderBoard();
-                            if(game.game_over()){
-                                let result=game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over");
-                                statusDiv.textContent=result;
-                                gameActive=false;
-                                if(options.onGameEnd) options.onGameEnd(result);
-                            }
-                            else{
-                                statusDiv.textContent="Computer is thinking...";
-                                makeAIMove();
-                            }
+                        if(game.game_over()){
+                            endGame(game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over"));
+                        }
+                        else{
+                            statusDiv.textContent="Computer is thinking...";
+                            makeAIMove();
+                        }
                         }
                         else{
                             selectedSquare=null;
@@ -382,10 +387,7 @@ export async function createChessGame(container, options={}){
             }
         }
         if(game.game_over()){
-            let result=game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over");
-            statusDiv.textContent=result;
-            gameActive=false;
-            if(options.onGameEnd) options.onGameEnd(result);
+            endGame(game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over"));
         }
     }
     function makeAIMove(){
@@ -400,10 +402,7 @@ export async function createChessGame(container, options={}){
                 game.move(bestMove);
                 renderBoard();
                 if(game.game_over()){
-                    let result=game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over");
-                    statusDiv.textContent=result;
-                    gameActive=false;
-                    if(options.onGameEnd) options.onGameEnd(result);
+                    endGame(game.in_checkmate()?"Checkmate! "+(game.turn()==='w'?"Black wins":"White wins"):(game.in_stalemate()?"Stalemate!":"Game over"));
                 }
                 else{
                     statusDiv.textContent="Your turn";
@@ -419,11 +418,7 @@ export async function createChessGame(container, options={}){
     statusDiv.textContent="Your turn (White)";
     renderBoard();
     resignBtn.onclick=()=>{
-        if(!gameActive) return;
-        gameActive=false;
-        let result=(playerColor==='w')?"Black wins by resignation":"White wins by resignation";
-        statusDiv.textContent=result;
-        if(options.onGameEnd) options.onGameEnd(result);
+        endGame((playerColor==='w')?"Black wins by resignation":"White wins by resignation");
     };
     container._cleanup=()=>{
         chessWorker.terminate();
@@ -457,13 +452,47 @@ export function processCommand(msg,currentUser,socket,clientRealIP,chatPage,user
         doRandomEasterEgg(showSystemMessageFn,applyGoldBorderFn,updateDeveloperModeFn,()=>{incrementUnlockCount();showSystemMessageFn(`Secret unlock #${unlockCount}. You feel a strange power.`);applyGoldBorderFn();updateDeveloperModeFn();});
         return true;
     }
+    if(msg.startsWith("/poll")){
+        let args=msg.substring(5).trim();
+        if(!args){
+            showSystemMessageFn("Usage: /poll \"Question\" \"Option1\" \"Option2\" ...");
+            return true;
+        }
+        let parts=[];
+        let current="";
+        let inQuote=false;
+        for(let i=0;i<args.length;i++){
+            if(args[i]==='"'){
+                if(inQuote){
+                    if(current.trim())parts.push(current.trim());
+                    current="";
+                    inQuote=false;
+                }
+                else{
+                    inQuote=true;
+                }
+            }
+            else if(inQuote){
+                current+=args[i];
+            }
+        }
+        if(current.trim())parts.push(current.trim());
+        if(parts.length<3){
+            showSystemMessageFn("Usage: /poll \"Question\" \"Option1\" \"Option2\" ...");
+            return true;
+        }
+        if(socket&&socket.readyState===WebSocket.OPEN){
+            socket.send(JSON.stringify({type:"createPoll",question:parts[0],options:parts.slice(1)}));
+        }
+        return true;
+    }
     if(msg==="/chess"){
-        if(document.getElementById("chessOverlay")){
+        if(document.getElementById("chessOverlay")||document.getElementById("chessSetupOverlay")){
             showChatError(chatErrorDiv,"Chess game is already open");
             return true;
         }
         let overlay=document.createElement("div");
-        overlay.id="chessOverlay";
+        overlay.id="chessSetupOverlay";
         overlay.style.cssText="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1001;";
         let modal=document.createElement("div");
         modal.style.cssText="background:var(--background-card);border:2px solid var(--border-card);border-radius:.5rem;padding:1rem;max-width:500px;width:90%;box-shadow:0 4px 20px var(--box-shadow);";
@@ -560,6 +589,44 @@ export function processCommand(msg,currentUser,socket,clientRealIP,chatPage,user
         }
         return true;
     }
+    if(msg==="/stats"){
+        if(socket&&socket.readyState===WebSocket.OPEN){
+            socket.send(JSON.stringify({type:"getStats"}));
+        }
+        return true;
+    }
+    if(msg==="/diag"){
+        showSystemMessageFn("Running diagnostics...");
+        let wsState=socket?socket.readyState:-1;
+        let wsStatus=wsState===WebSocket.OPEN?"Connected":wsState===WebSocket.CONNECTING?"Connecting":wsState===WebSocket.CLOSING?"Closing":"Disconnected";
+        fetch("/get-client-ip").then(r=>r.json()).then(data=>{
+            let httpCheck="Reachable";
+            let clientIP=data.ip||"Unknown";
+            let diagMsg=`Diagnostics:\n\nHTTP: ${httpCheck}\nWebSocket: ${wsStatus}\nYour IP: ${clientIP}\nServer: ${window.location.hostname}\nPort: ${window.location.port||"80"}`;
+            if(socket&&socket.readyState===WebSocket.OPEN){
+                let t0=Date.now();
+                socket.send(JSON.stringify({type:"ping",timestamp:t0}));
+                socket.addEventListener("message",function pingHandler(event){
+                    try{
+                        let d=JSON.parse(event.data);
+                        if(d.type==="pong"&&d.timestamp===t0){
+                            socket.removeEventListener("message",pingHandler);
+                            let latency=Date.now()-t0;
+                            diagMsg+=`\nLatency: ${latency} ms`;
+                            showSystemMessageFn(diagMsg);
+                        }
+                    }
+                    catch(e){}
+                });
+            }
+            else{
+                showSystemMessageFn(diagMsg);
+            }
+        }).catch(()=>{
+            showSystemMessageFn(`Diagnostics:\n\nHTTP: Unreachable\nWebSocket: ${wsStatus}\nServer: ${window.location.hostname}`);
+        });
+        return true;
+    }
     if(msg.startsWith("/clear")){
         let parts=msg.split(" ");
         let n=parts[1]?parseInt(parts[1]):0;
@@ -601,6 +668,9 @@ Shift+Enter - Send message
 /clear - Clear all messages from your view
 /clear <N> - Clear last N messages
 /ping - Measure connection latency
+/diag - Run network diagnostics
+/stats - Show session statistics
+/poll "Question" "Option1" "Option2" - Create anonymous poll
 /2048 - Play 2048 game
 /chess - Play Chess vs Computer (choose difficulty)
         `;
@@ -608,7 +678,7 @@ Shift+Enter - Send message
         return true;
     }
     if(msg==="/help"){
-        let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/2048 - play 2048 game\n/chess - play Chess vs Computer (difficulty selection)\n/nick <newname> - change your username\n/clear [N] - clear all or last N messages\n/ping - measure latency\n/shortcuts - show keyboard shortcuts\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
+        let help="Available commands:\n/users - list online users\n/msg \"username\" message - private message\n/poll \"Question\" \"Option1\" \"Option2\" - create anonymous poll\n/2048 - play 2048 game\n/chess - play Chess vs Computer (difficulty selection)\n/nick <newname> - change your username\n/clear [N] - clear all or last N messages\n/ping - measure latency\n/diag - run network diagnostics\n/stats - show session statistics\n/shortcuts - show keyboard shortcuts\n/help - this help\n\nKeyboard: Ctrl+B bold, Ctrl+I italic, Ctrl+M code\n\nDrag & drop image (≤1MB, WebP)\n\nMentions: @username or @\"name with spaces\" (highlighted, not inside code blocks)\n\nRight-click any message to reply or forward.\n\n{ } button inserts code block (supports many languages).";
         showSystemMessageFn(help);
         return true;
     }

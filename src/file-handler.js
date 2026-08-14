@@ -3,18 +3,19 @@ export const CHUNK_SIZE=16*1024*1024;
 export const ALLOWED_FILE_TYPES=[];
 const FILE_TRANSFER_TIMEOUT=300000;
 export function formatFileSize(bytes){
-    if(bytes===0)return"0 Bytes";
+    if(!bytes||bytes===0)return"0 Bytes";
     const k=1024;
     const sizes=["Bytes","KB","MB","GB"];
     const i=Math.floor(Math.log(bytes)/Math.log(k));
     return parseFloat((bytes/Math.pow(k,i)).toFixed(2))+" "+sizes[i];
 }
 export function getFileTypeCategory(mimeType){
+    if(!mimeType)return"other";
     if(mimeType.startsWith("image/"))return"image";
     if(mimeType==="application/pdf")return"pdf";
     if(mimeType.includes("zip")||mimeType.includes("rar")||mimeType.includes("7z"))return"archive";
-    if(mimeType.startsWith("text/")||mimeType.includes("json")||mimeType.includes("xml"))return"document";
     if(mimeType.includes("javascript")||mimeType.includes("html")||mimeType.includes("css"))return"code";
+    if(mimeType.startsWith("text/")||mimeType.includes("json")||mimeType.includes("xml"))return"document";
     if(mimeType.startsWith("video/"))return"video";
     if(mimeType.startsWith("audio/"))return"audio";
     return"other";
@@ -36,22 +37,24 @@ export function createFileMessageHTML(fileData,fileName,fileSize,mimeType,userna
     const fileIcon=getFileIconSVG(fileType);
     const formattedSize=formatFileSize(fileSize);
     const fileId="file_"+Date.now()+"_"+Math.random().toString(36).substr(2,9);
+    const safeFileName=escapeHtml(fileName||"");
+    const safeFileData=escapeHtml(fileData||"");
     let previewHtml="";
     if(fileType==="image"&&fileData){
-        previewHtml=`<img src="${fileData}" class="file-preview-image" alt="Preview">`;
+        previewHtml=`<img src="${safeFileData}" class="file-preview-image" alt="Preview">`;
     }
     if(fileType==="video"&&fileData){
-        previewHtml=`<video controls class="file-preview-video" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:5px;"><source src="${fileData}"></video>`;
+        previewHtml=`<video controls class="file-preview-video" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:5px;"><source src="${safeFileData}"></video>`;
     }
     if(fileType==="audio"&&fileData){
-        previewHtml=`<audio controls class="file-preview-audio" style="width:100%;margin-top:5px;"><source src="${fileData}"></audio>`;
+        previewHtml=`<audio controls class="file-preview-audio" style="width:100%;margin-top:5px;"><source src="${safeFileData}"></audio>`;
     }
     return`
-        <div class="file-message" data-file-id="${fileId}" data-file-name="${fileName}" data-file-data="${fileData||""}">
+        <div class="file-message" data-file-id="${fileId}" data-file-name="${safeFileName}" data-file-data="${safeFileData}">
             <div class="file-icon">${fileIcon}</div>
             <div class="file-info">
                 <div class="file-name">
-                    ${escapeHtml(fileName)}
+                    ${safeFileName}
                     <span class="file-type-badge file-type-${fileType}">${fileType.toUpperCase()}</span>
                 </div>
                 <div class="file-size">${formattedSize}</div>
@@ -159,6 +162,7 @@ export function handleBinaryChunk(arrayBuffer,messagesList,scrollToBottom,checkS
     }
 }
 export function handleFileStart(data,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv){
+    if(data.username===currentUser&&incomingFiles.has(data.transferId))return;
     const meta={
         transferId:data.transferId,
         fileName:data.fileName,
@@ -171,7 +175,8 @@ export function handleFileStart(data,messagesList,scrollToBottom,checkScrollPosi
         totalChunks:data.totalChunks,
         placeholderLi:null,
         placeholderBar:null,
-        completed:false
+        completed:false,
+        _deps:{messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml,getCurrentTime,currentUser,showChatError,chatErrorDiv}
     };
     incomingFiles.set(data.transferId,meta);
     const timeoutId=setTimeout(()=>{
@@ -325,7 +330,21 @@ function checkFileComplete(transferId,messagesList,scrollToBottom,checkScrollPos
     }
     incomingFiles.delete(transferId);
 }
-export function handleFileEnd(data){}
+export function handleFileEnd(data){
+    const meta=incomingFiles.get(data.transferId);
+    if(!meta||meta.completed)return;
+    if(meta._deps){
+        checkFileComplete(data.transferId,meta._deps.messagesList,meta._deps.scrollToBottom,meta._deps.checkScrollPosition,meta._deps.scrollBtn,meta._deps.autoScroll,meta._deps.escapeHtml,meta._deps.getCurrentTime,meta._deps.currentUser,meta._deps.showChatError,meta._deps.chatErrorDiv);
+    }
+    else{
+        for(const[pendingMeta]of incomingFiles){
+            if(pendingMeta.transferId===data.transferId&&pendingMeta._deps){
+                checkFileComplete(data.transferId,pendingMeta._deps.messagesList,pendingMeta._deps.scrollToBottom,pendingMeta._deps.checkScrollPosition,pendingMeta._deps.scrollBtn,pendingMeta._deps.autoScroll,pendingMeta._deps.escapeHtml,pendingMeta._deps.getCurrentTime,pendingMeta._deps.currentUser,pendingMeta._deps.showChatError,pendingMeta._deps.chatErrorDiv);
+                break;
+            }
+        }
+    }
+}
 export const activeTransfers=new Map();
 export function cancelFileTransfer(transferId){
     const ctrl=activeTransfers.get(transferId);
@@ -441,7 +460,7 @@ export async function sendMultipleFiles(files, socket, currentUser, clientRealIP
     }
     showChatError(chatErrorDiv,"Sent "+validFiles.length+" file(s)");
 }
-export function initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml){
+export function initFileHandlers(getSocket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,messagesList,scrollToBottom,checkScrollPosition,scrollBtn,autoScroll,escapeHtml){
     const onSendComplete=(url, fileName, fileSize, mimeType, time)=>{
         const ip=clientRealIP||"Unknown";
         const fileHTML=createFileMessageHTML(url, fileName, fileSize, mimeType, currentUser, ip, time, true, escapeHtml);
@@ -470,7 +489,7 @@ export function initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,
     });
     document.getElementById("fileInput").addEventListener("change",(e)=>{
         if(e.target.files.length>0){
-            sendMultipleFiles(e.target.files, socket, currentUser, clientRealIP, getCurrentTime, showChatError, chatErrorDiv, onSendComplete);
+            sendMultipleFiles(e.target.files, getSocket(), currentUser, clientRealIP, getCurrentTime, showChatError, chatErrorDiv, onSendComplete);
             e.target.value="";
         }
     });
@@ -487,7 +506,7 @@ export function initFileHandlers(socket,currentUser,clientRealIP,getCurrentTime,
         chatAreaDrop.style.opacity="1";
         const files=Array.from(e.dataTransfer.files);
         if(files.length>0){
-            await sendMultipleFiles(files, socket, currentUser, clientRealIP, getCurrentTime, showChatError, chatErrorDiv, onSendComplete);
+            await sendMultipleFiles(files, getSocket(), currentUser, clientRealIP, getCurrentTime, showChatError, chatErrorDiv, onSendComplete);
         }
     });
 }

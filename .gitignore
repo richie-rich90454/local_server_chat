@@ -134,3 +134,12 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+.opencode
+docs
+server-bundle.js
+server-bundle.cjs
+client-bundle.cjs
+sea-prep.blob
+client-sea-prep.blob
+src/server/embedded-assets.js
+release/

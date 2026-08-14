@@ -3,22 +3,34 @@
     "version": "2.0.0",
     "type": "module",
     "dependencies": {
-        "bad-words": "^4.1.1",
+        "@noble/ciphers": "^2.3.0",
+        "@noble/hashes": "^2.3.0",
+        "bad-words": "^4.1.5",
         "chess.js": "^1.0.0",
         "express": "^5.2.1",
         "gchessboard": "^1.4.0",
-        "highlight.js": "^11.11.1",
+        "highlight.js": "^11.12.0",
         "highlightjs-cobol": "^0.3.3",
         "highlightjs-graphql": "^1.0.2",
         "highlightjs-zig": "^1.0.2",
-        "ws": "^8.21.1"
+        "qrcode": "^1.5.4",
+        "ws": "^8.21.3"
     },
     "main": "server.js",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
+        "test": "node scripts/smoke-test.js",
         "start": "node server.js",
+        "client": "node client.js",
         "dev": "vite dev",
-        "build": "vite build"
+        "build": "vite build",
+        "embed": "node scripts/embed-dist.js",
+        "bundle": "esbuild server.js --bundle --platform=node --format=cjs --outfile=server-bundle.cjs",
+        "bundle-client": "esbuild client.js --bundle --platform=node --format=cjs --outfile=client-bundle.cjs",
+        "sea": "node --experimental-sea-config sea-config.json",
+        "sea-client": "node --experimental-sea-config sea-config-client.json",
+        "package-server": "vite build && npm run embed && npm run bundle && npm run sea && node scripts/inject-sea.js",
+        "package-client": "vite build && npm run embed && npm run bundle-client && npm run sea-client && node scripts/inject-sea.js --client",
+        "package": "npm run package-server && npm run package-client"
     },
     "keywords": [
         "WebSocket",
@@ -29,7 +41,9 @@
     "license": "Apache-2.0",
     "description": "It should just be a chat app.",
     "devDependencies": {
-        "vite": "^8.1.5",
+        "esbuild": "^0.28.2",
+        "postject": "^1.0.0-alpha.6",
+        "vite": "^8.2.1",
         "vite-plugin-html": "^3.2.2"
     }
 }

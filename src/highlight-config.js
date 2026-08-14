@@ -106,12 +106,54 @@ hljsDefineZig(hljs);
 hljs.registerLanguage("cobol", hljsDefineCobol);
 export { hljs };
 export function escapeHtml(str){
-    return str.replace(/[&<>]/g,function(m){
+    return String(str==null?"":str).replace(/[&<>"']/g,function(m){
         if(m=="&"){return "&amp;";}
         if(m=="<"){return "&lt;";}
         if(m==">"){return "&gt;";}
-        return m;
+        if(m=='"'){return "&quot;";}
+        return "&#39;";
     });
+}
+function renderTables(text){
+    let lines=text.split("\n");
+    let out=[];
+    let i=0;
+    while(i<lines.length){
+        let line=lines[i];
+        let isHeader=line.indexOf("|")!==-1;
+        let nextIsSep=i+1<lines.length&&/^\s*\|?[\s|:|-]+\|?\s*$/.test(lines[i+1])&&lines[i+1].indexOf("-")!==-1;
+        if(isHeader&&nextIsSep){
+            let headerCells=line.split("|").slice(1,-1).map(c=>c.trim());
+            if(headerCells.length>=2){
+                let rows=[];
+                let j=i+2;
+                while(j<lines.length&&lines[j].indexOf("|")!==-1){
+                    rows.push(lines[j].split("|").slice(1,-1).map(c=>c.trim()));
+                    j++;
+                }
+                let html="<table style=\"border-collapse:collapse;margin:.3rem 0;\">";
+                html+="<thead><tr>";
+                for(let hc of headerCells){
+                    html+="<th style=\"border:1px solid var(--border-card);padding:.2rem .5rem;\">"+hc+"</th>";
+                }
+                html+="</tr></thead><tbody>";
+                for(let row of rows){
+                    html+="<tr>";
+                    for(let ci=0;ci<headerCells.length;ci++){
+                        html+="<td style=\"border:1px solid var(--border-card);padding:.2rem .5rem;\">"+(row[ci]||"")+"</td>";
+                    }
+                    html+="</tr>";
+                }
+                html+="</tbody></table>";
+                out.push(html);
+                i=j;
+                continue;
+            }
+        }
+        out.push(line);
+        i++;
+    }
+    return out.join("\n");
 }
 export function formatMarkdown(text){
     let codeBlocks=[];
@@ -120,10 +162,20 @@ export function formatMarkdown(text){
         codeBlocks.push({lang:lang||"",code});
         return `__CODEBLOCK_${idx}__`;
     });
+    withoutCode=withoutCode.replace(/^[ \t]*```([\w+-]*)[ \t]*([^\n]*?)```[ \t]*$/gm,function(match,lang,code){
+        let idx=codeBlocks.length;
+        codeBlocks.push({lang:lang||"",code});
+        return `__CODEBLOCK_${idx}__`;
+    });
     let escaped=escapeHtml(withoutCode);
     escaped=escaped.replace(/`([^`]+)`/g,"<code>$1</code>");
+    escaped=escaped.replace(/~~([^~]+)~~/g,"<s>$1</s>");
     escaped=escaped.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>");
     escaped=escaped.replace(/\*([^*]+)\*/g,"<em>$1</em>");
+    escaped=renderTables(escaped);
+    escaped=escaped.replace(/^[ \t]*(\[ \]|\[x\]) ([^\n]*)$/gm,function(match,box,item){
+        return `<input type="checkbox" disabled${box==="[x]"?" checked":""}> ${item}`;
+    });
     escaped=escaped.replace(/\n/g,"<br>");
     escaped=escaped.replace(/__CODEBLOCK_(\d+)__/g,function(match,idx){
         let block=codeBlocks[parseInt(idx)];

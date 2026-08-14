@@ -24,6 +24,27 @@ export function createModal(promptMessage, defaultValue, callback){
     function close(){
         overlay.remove();
     }
+    overlay.addEventListener("keydown",(e)=>{
+        if(e.key==="Escape"){
+            close();
+            callback(null);
+        }
+        else if(e.key==="Tab"){
+            let focusables=box.querySelectorAll("button, input, select, textarea, [tabindex]");
+            let list=Array.from(focusables).filter(el=>!el.disabled&&el.offsetParent!==null);
+            if(list.length===0)return;
+            let first=list[0];
+            let last=list[list.length-1];
+            if(e.shiftKey&&document.activeElement===first){
+                e.preventDefault();
+                last.focus();
+            }
+            else if(!e.shiftKey&&document.activeElement===last){
+                e.preventDefault();
+                first.focus();
+            }
+        }
+    });
     okBtn.onclick=()=>{
         let val=input.value.trim();
         close();
@@ -73,19 +94,11 @@ export function updateTypingIndicatorUI(currentTypers,typingIndicatorDiv){
     if(!typingIndicatorDiv){return;}
     let arr=Array.from(currentTypers);
     if(arr.length===0){typingIndicatorDiv.textContent="";}
-    else if(arr.length===1){typingIndicatorDiv.textContent=`${escapeHtml(arr[0])} is typing...`;}
+    else if(arr.length===1){typingIndicatorDiv.textContent=`${arr[0]} is typing...`;}
     else{
         let last=arr.pop();
-        typingIndicatorDiv.textContent=`${arr.map(escapeHtml).join(", ")} and ${escapeHtml(last)} are typing...`;
+        typingIndicatorDiv.textContent=`${arr.join(", ")} and ${last} are typing...`;
     }
-}
-function escapeHtml(str){
-    return str.replace(/[&<>]/g,function(m){
-        if(m=="&"){return "&amp;";}
-        if(m=="<"){return "&lt;";}
-        if(m==">"){return "&gt;";}
-        return m;
-    });
 }
 export function wrapSelection(textarea,before,after){
     let start=textarea.selectionStart;
