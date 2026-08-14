@@ -54,6 +54,157 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
     let currentRoom="General";
     let roomSelector=null;
+    let prefs=loadPrefs();
+    let chatSearchEl=document.getElementById("chatSearch");
+    function loadPrefs(){
+        try{
+            let saved=JSON.parse(localStorage.getItem("chatPrefs")||"{}");
+            return Object.assign({sound:true,dndUntil:0,density:"comfortable",focusMode:false,reduceMotion:false,wrapCode:false,textSize:"normal",accent:"",lang:"en",e2e:false,e2ePass:"",ignoredUsers:[],blockedWords:[]},saved);
+        }
+        catch(e){
+            return{sound:true,dndUntil:0,density:"comfortable",focusMode:false,reduceMotion:false,wrapCode:false,textSize:"normal",accent:"",lang:"en",e2e:false,e2ePass:"",ignoredUsers:[],blockedWords:[]};
+        }
+    }
+    function savePrefs(){
+        localStorage.setItem("chatPrefs",JSON.stringify(prefs));
+    }
+    function applyPrefs(){
+        document.body.classList.toggle("density-compact",prefs.density==="compact");
+        document.body.classList.toggle("reduce-motion",prefs.reduceMotion);
+        document.body.classList.toggle("wrap-code",prefs.wrapCode);
+        if(prefs.textSize==="small"){
+            document.documentElement.style.fontSize="14px";
+        }
+        else if(prefs.textSize==="large"){
+            document.documentElement.style.fontSize="18px";
+        }
+        else{
+            document.documentElement.style.fontSize="";
+        }
+        if(prefs.accent){
+            document.documentElement.style.setProperty("--message-user",prefs.accent);
+        }
+        else{
+            document.documentElement.style.removeProperty("--message-user");
+        }
+        applyVisibilityFilters();
+    }
+    function isHiddenFromView(data){
+        if(!data)return false;
+        let ignored=prefs.ignoredUsers||[];
+        if(data.username&&ignored.indexOf(data.username)!==-1)return true;
+        if(data.from&&ignored.indexOf(data.from)!==-1)return true;
+        let blocked=prefs.blockedWords||[];
+        if(blocked.length&&data.message){
+            let lower=String(data.message).toLowerCase();
+            for(let w of blocked){
+                if(w&&lower.indexOf(w.toLowerCase())!==-1)return true;
+            }
+        }
+        return false;
+    }
+    function applyVisibilityFilters(){
+        let query=chatSearchEl?chatSearchEl.value.trim().toLowerCase():"";
+        let ignored=prefs.ignoredUsers||[];
+        let blocked=prefs.blockedWords||[];
+        for(let li of messagesList.children){
+            let sender=li.getAttribute("data-sender")||"";
+            let raw=(li.getAttribute("data-rawmessage")||li.textContent||"").toLowerCase();
+            let hidden=false;
+            if(ignored.indexOf(sender)!==-1)hidden=true;
+            if(!hidden&&blocked.length){
+                for(let w of blocked){
+                    if(w&&raw.indexOf(w.toLowerCase())!==-1){hidden=true;break;}
+                }
+            }
+            if(!hidden&&query){
+                let hay=(li.textContent||"").toLowerCase();
+                if(hay.indexOf(query)===-1)hidden=true;
+            }
+            li.classList.toggle("search-hidden",hidden);
+        }
+    }
+    applyPrefs();
+    if(chatSearchEl){
+        chatSearchEl.addEventListener("input",()=>{
+            applyVisibilityFilters();
+        });
+    }
+    document.addEventListener("keydown",(e)=>{
+        if(e.ctrlKey&&e.key.toLowerCase()==="f"&&chatPage.style.display==="block"){
+            e.preventDefault();
+            if(chatSearchEl)chatSearchEl.focus();
+        }
+    });
+    let connStatus=document.createElement("span");
+    connStatus.id="connStatus";
+    connStatus.textContent="Offline";
+    connStatus.classList.add("reconnecting");
+    let headerControlsEl=document.getElementById("headerControls");
+    if(headerControlsEl){
+        headerControlsEl.insertBefore(connStatus,headerControlsEl.firstChild);
+    }
+    function setConnStatus(text,cls){
+        connStatus.textContent=text;
+        connStatus.className=cls;
+    }
+    let unreadCount=0;
+    const baseTitle="Local Server Chat";
+    function resetTitle(){
+        unreadCount=0;
+        document.title=baseTitle;
+    }
+    function bumpTitle(){
+        unreadCount++;
+        document.title=`(${unreadCount}) ${baseTitle}`;
+    }
+    document.addEventListener("visibilitychange",()=>{
+        if(!document.hidden){
+            resetTitle();
+        }
+    });
+    function inDnd(){
+        return prefs.dndUntil>Date.now();
+    }
+    function playMessageSound(){
+        if(!prefs.sound||inDnd())return;
+        try{
+            let ctx=new(window.AudioContext||window.webkitAudioContext)();
+            let osc=ctx.createOscillator();
+            let gain=ctx.createGain();
+            osc.type="sine";
+            osc.frequency.value=880;
+            gain.gain.setValueAtTime(0.08,ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.15);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime+0.15);
+        }
+        catch(e){}
+    }
+    function notifyMessage(data){
+        if(document.hidden&&!inDnd()&&"Notification" in window&&Notification.permission==="granted"){
+            try{
+                let body=String(data.message||"").slice(0,140);
+                let n=new Notification(data.username||"New message",{body:body||"(message)",icon:"/favicon-32x32.png"});
+                n.onclick=()=>{window.focus();n.close();};
+            }
+            catch(e){}
+        }
+    }
+    function onIncomingMessage(data){
+        if(!data||data.username===currentUser||data.username==="Anonymous")return;
+        if(document.hidden){
+            bumpTitle();
+            notifyMessage(data);
+        }
+        else{
+            resetTitle();
+        }
+        playMessageSound();
+    }
+
     function createRoomUI(){
         let headerControls=document.getElementById("headerControls");
         if(!headerControls)return;
@@ -403,6 +554,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             return;
         }
         if(data.type==="pollCreated"||data.type==="pollUpdate"||data.type==="pollClosed"){
+            if(isHiddenFromView(data))return;
             let li=document.createElement("li");
             li.id="poll_"+data.id;
             li.style.cssText="background:var(--background-card);border:1px solid var(--border-input);border-radius:var(--border-radius);padding:0.5rem;margin:0.3rem 0;";
@@ -458,12 +610,16 @@ document.addEventListener("DOMContentLoaded",()=>{
             }
             scrollToBottom(messagesList);
             checkScrollPosition(messagesList,scrollBtn,autoScroll);
+            if(data.type==="pollCreated"){
+                onIncomingMessage(data);
+            }
             return;
         }
         if(data.type==="pollList"){
             return;
         }
         if(data.type==="private"){
+            if(isHiddenFromView(data))return;
             let time=data.timestamp||getCurrentTime();
             let formatted=formatMarkdown(data.message);
             let ip=data.ip||"Unknown";
@@ -479,9 +635,11 @@ document.addEventListener("DOMContentLoaded",()=>{
             messagesList.appendChild(li);
             scrollToBottom(messagesList);
             checkScrollPosition(messagesList,scrollBtn,autoScroll);
+            if(!data.self){onIncomingMessage(data);}
             return;
         }
         if(data.type==="image"){
+            if(isHiddenFromView(data))return;
             let time=getCurrentTime();
             let ip=data.ip||clientRealIP||"Unknown";
             let imgHtml=isSafeMediaSrc(data.image)?`<img src="${escapeHtml(data.image)}" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:4px;cursor:pointer;" onclick="window.open(this.src,'_blank')">`:`<em>[Unsafe image blocked]</em>`;
@@ -498,9 +656,11 @@ document.addEventListener("DOMContentLoaded",()=>{
             messagesList.appendChild(li);
             scrollToBottom(messagesList);
             checkScrollPosition(messagesList,scrollBtn,autoScroll);
+            onIncomingMessage(data);
             return;
         }
         if(data.type==="voice"){
+            if(isHiddenFromView(data))return;
             let time=getCurrentTime();
             let ip=data.ip||clientRealIP||"Unknown";
             let audioHtml=isSafeMediaSrc(data.voice)?`<audio controls src="${escapeHtml(data.voice)}" style="max-width:100%;"></audio>`:`<em>[Unsafe audio blocked]</em>`;
@@ -517,6 +677,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             messagesList.appendChild(li);
             scrollToBottom(messagesList);
             checkScrollPosition(messagesList,scrollBtn,autoScroll);
+            onIncomingMessage(data);
             return;
         }
         if(data.type==="pong"){
@@ -534,6 +695,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             showChatError(chatErrorDiv,`Username changed to ${currentUser}`);
             return;
         }
+        if(isHiddenFromView(data))return;
         let time=getCurrentTime();
         let formatted=formatMarkdown(data.message||"");
         let ip=data.ip||clientRealIP||"Unknown";
@@ -573,12 +735,14 @@ document.addEventListener("DOMContentLoaded",()=>{
         messagesList.appendChild(li);
         scrollToBottom(messagesList);
         checkScrollPosition(messagesList,scrollBtn,autoScroll);
+        onIncomingMessage(data);
     }
     function onWebSocketMessage(data){
         addMessageToUI(data);
     }
     function connect(){
         if(reconnectTimer){clearTimeout(reconnectTimer);}
+        setConnStatus("Connecting…","reconnecting");
         let wsHost=clientMode&&remoteHost?remoteHost:window.location.hostname;
         let wsPort=clientMode&&remotePort?remotePort:defaultPort;
         let handlers={
@@ -588,6 +752,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             },
             onOpen: ()=>{
                 console.log("WebSocket connected to "+wsHost+":"+wsPort);
+                setConnStatus("Connected","connected");
                 reconnectAttempts=0;
                 socket.send(JSON.stringify({type:"join",username:currentUser}));
                 socket.send(JSON.stringify({type:"getRooms"}));
@@ -602,6 +767,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             },
             onClose: ()=>{
                 console.log("WebSocket closed");
+                setConnStatus("Reconnecting…","reconnecting");
                 if(!intentionalClose&&currentUser&&chatPage.style.display==="block"){
                     showChatError(chatErrorDiv,"Connection lost. Reconnecting...");
                     clearTimeout(reconnectTimer);
@@ -767,6 +933,9 @@ document.addEventListener("DOMContentLoaded",()=>{
             return;
         }
         currentUser=username;
+        if("Notification" in window&&Notification.permission==="default"){
+            Notification.requestPermission().catch(()=>{});
+        }
         if(clientRealIP==="Unknown"){await fetchAndDisplayIP();}
         loginPage.style.display="none";
         chatPage.style.display="block";
