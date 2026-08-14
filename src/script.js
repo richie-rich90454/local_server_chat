@@ -22,7 +22,10 @@ document.addEventListener("DOMContentLoaded",()=>{
         menu.style.cssText="position:fixed;background-color:var(--background-card);border:1px solid var(--border-card);border-radius:.3rem;padding:.3rem;z-index:1000;display:none;box-shadow:0 2px 6px var(--box-shadow);color:var(--text-primary);";
         let replyOpt=document.createElement("div");replyOpt.id="replyOption";replyOpt.textContent="Reply";replyOpt.style.cssText="padding:.2rem .5rem;cursor:pointer;white-space:nowrap;color:var(--text-primary);";
         let forwardOpt=document.createElement("div");forwardOpt.id="forwardOption";forwardOpt.textContent="Forward to private";forwardOpt.style.cssText="padding:.2rem .5rem;cursor:pointer;white-space:nowrap;color:var(--text-primary);";
-        menu.appendChild(replyOpt);menu.appendChild(forwardOpt);document.body.appendChild(menu);
+        let ignoreOpt=document.createElement("div");ignoreOpt.id="ignoreOption";ignoreOpt.textContent="Ignore user";ignoreOpt.style.cssText="padding:.2rem .5rem;cursor:pointer;white-space:nowrap;color:var(--text-primary);";
+        let copyOpt=document.createElement("div");copyOpt.id="copyOption";copyOpt.textContent="Copy message";copyOpt.style.cssText="padding:.2rem .5rem;cursor:pointer;white-space:nowrap;color:var(--text-primary);";
+        let pinOpt=document.createElement("div");pinOpt.id="pinOption";pinOpt.textContent="Pin message";pinOpt.style.cssText="padding:.2rem .5rem;cursor:pointer;white-space:nowrap;color:var(--text-primary);";
+        menu.appendChild(replyOpt);menu.appendChild(forwardOpt);menu.appendChild(ignoreOpt);menu.appendChild(copyOpt);menu.appendChild(pinOpt);document.body.appendChild(menu);
     }
     let loginPage=document.getElementById("login");
     let chatPage=document.getElementById("chatUI");
@@ -646,6 +649,20 @@ document.addEventListener("DOMContentLoaded",()=>{
     function isSafeMediaSrc(src){
         return typeof src==="string"&&/^(data:|blob:)/.test(src);
     }
+    function copyTextToClipboard(text){
+        if(navigator.clipboard&&navigator.clipboard.writeText){
+            navigator.clipboard.writeText(text).catch(()=>{});
+        }
+        else{
+            let ta=document.createElement("textarea");
+            ta.value=text;
+            ta.style.cssText="position:fixed;opacity:0;";
+            document.body.appendChild(ta);
+            ta.select();
+            try{document.execCommand("copy");}catch(e){}
+            ta.remove();
+        }
+    }
     function addMessageToUI(data){
         if(data.type==="onlineCount"){
             let span=document.getElementById("onlineCount");
@@ -881,6 +898,11 @@ document.addEventListener("DOMContentLoaded",()=>{
             menu.style.display="block";
             window.currentReplySender=data.username;
             window.currentReplyRawText=data.message;
+            window.currentReplyLi=li;
+            let pinOptEl=document.getElementById("pinOption");
+            if(pinOptEl){
+                pinOptEl.textContent=li.classList.contains("msg-pinned")?"Unpin message":"Pin message";
+            }
         });
         messagesList.appendChild(li);
         scrollToBottom(messagesList);
@@ -1315,6 +1337,9 @@ document.addEventListener("DOMContentLoaded",()=>{
         document.addEventListener("click",()=>{contextMenuElem.style.display="none";});
         let replyOptElem=document.getElementById("replyOption");
         let forwardOptElem=document.getElementById("forwardOption");
+        let ignoreOptElem=document.getElementById("ignoreOption");
+        let copyOptElem=document.getElementById("copyOption");
+        let pinOptElem=document.getElementById("pinOption");
         if(replyOptElem){
             replyOptElem.addEventListener("click",()=>{
                 if(window.currentReplySender&&window.currentReplyRawText){
@@ -1327,6 +1352,46 @@ document.addEventListener("DOMContentLoaded",()=>{
             forwardOptElem.addEventListener("click",()=>{
                 if(window.currentReplySender&&window.currentReplyRawText){
                     insertForwardToPrivate(userMessage,window.currentReplySender,window.currentReplyRawText);
+                }
+                contextMenuElem.style.display="none";
+            });
+        }
+        if(ignoreOptElem){
+            ignoreOptElem.addEventListener("click",()=>{
+                let sender=window.currentReplySender;
+                if(sender){
+                    prefs.ignoredUsers=prefs.ignoredUsers||[];
+                    if(prefs.ignoredUsers.indexOf(sender)===-1){
+                        prefs.ignoredUsers.push(sender);
+                        savePrefs();
+                        applyVisibilityFilters();
+                        showChatError(chatErrorDiv,"Ignored "+sender+". Messages hidden.");
+                    }
+                }
+                contextMenuElem.style.display="none";
+            });
+        }
+        if(copyOptElem){
+            copyOptElem.addEventListener("click",()=>{
+                if(window.currentReplyRawText){
+                    copyTextToClipboard(window.currentReplyRawText);
+                }
+                contextMenuElem.style.display="none";
+            });
+        }
+        if(pinOptElem){
+            pinOptElem.addEventListener("click",()=>{
+                let li=window.currentReplyLi;
+                if(li){
+                    if(li.classList.contains("msg-pinned")){
+                        li.classList.remove("msg-pinned");
+                        messagesList.appendChild(li);
+                    }
+                    else{
+                        li.classList.add("msg-pinned");
+                        messagesList.insertBefore(li,messagesList.firstChild);
+                    }
+                    scrollToBottom(messagesList);
                 }
                 contextMenuElem.style.display="none";
             });
