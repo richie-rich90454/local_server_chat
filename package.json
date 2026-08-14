@@ -21,12 +21,13 @@
         "client": "node client.js",
         "dev": "vite dev",
         "build": "vite build",
+        "embed": "node scripts/embed-dist.js",
         "bundle": "esbuild server.js --bundle --platform=node --format=cjs --outfile=server-bundle.cjs",
         "bundle-client": "esbuild client.js --bundle --platform=node --format=cjs --outfile=client-bundle.cjs",
         "sea": "node --experimental-sea-config sea-config.json",
         "sea-client": "node --experimental-sea-config sea-config-client.json",
-        "package-server": "vite build && npm run bundle && npm run sea && node scripts/inject-sea.js",
-        "package-client": "vite build && npm run bundle-client && npm run sea-client && node scripts/inject-sea.js --client",
+        "package-server": "vite build && npm run embed && npm run bundle && npm run sea && node scripts/inject-sea.js",
+        "package-client": "vite build && npm run embed && npm run bundle-client && npm run sea-client && node scripts/inject-sea.js --client",
         "package": "npm run package-server && npm run package-client"
     },
     "keywords": [
@@ -39,6 +40,7 @@
     "description": "It should just be a chat app.",
     "devDependencies": {
         "esbuild": "^0.28.2",
+        "postject": "^1.0.0-alpha.6",
         "vite": "^8.2.1",
         "vite-plugin-html": "^3.2.2"
     }
