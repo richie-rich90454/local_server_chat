@@ -449,7 +449,13 @@ document.addEventListener("DOMContentLoaded",()=>{
                 closedBadge.textContent="[CLOSED]";
                 footer.appendChild(closedBadge);
             }
-            messagesList.appendChild(li);
+            let existingPoll=document.getElementById("poll_"+data.id);
+            if(existingPoll){
+                existingPoll.replaceWith(li);
+            }
+            else{
+                messagesList.appendChild(li);
+            }
             scrollToBottom(messagesList);
             checkScrollPosition(messagesList,scrollBtn,autoScroll);
             return;
