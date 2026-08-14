@@ -934,7 +934,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             if(data.rooms){updateRoomList(data.rooms,data.room);}
             let li=document.createElement("li");
             li.innerHTML=`<em>You joined ${escapeHtml(data.room)}</em>`;
-            li.style.cssText="white-space:pre-wrap;color:gray;font-style:italic;";
+            li.style.cssText="white-space:pre-wrap;color:var(--text-secondary);font-style:italic;";
             messagesList.appendChild(li);
             scrollToBottom(messagesList);
             return;
@@ -943,7 +943,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             if(data.rooms){updateRoomList(data.rooms,currentRoom);}
             let li=document.createElement("li");
             li.innerHTML=`<em>Room ${escapeHtml(data.room)} created</em>`;
-            li.style.cssText="white-space:pre-wrap;color:gray;font-style:italic;";
+            li.style.cssText="white-space:pre-wrap;color:var(--text-secondary);font-style:italic;";
             messagesList.appendChild(li);
             scrollToBottom(messagesList);
             return;
@@ -972,7 +972,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             if(handleSystemMessage(data.message)) return;
             let li=document.createElement("li");
             li.innerHTML=`<em>${escapeHtml(data.message)}</em>`;
-            li.style.cssText="white-space:pre-wrap;color:gray;font-style:italic;";
+            li.style.cssText="white-space:pre-wrap;color:var(--text-secondary);font-style:italic;";
             messagesList.appendChild(li);
             scrollToBottom(messagesList);
             checkScrollPosition(messagesList,scrollBtn,autoScroll);
@@ -1116,7 +1116,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             let latency=Date.now()-data.timestamp;
             let li=document.createElement("li");
             li.innerHTML=`<em>Pong! Latency: ${latency} ms</em>`;
-            li.style.cssText="white-space:pre-wrap;color:gray;font-style:italic;";
+            li.style.cssText="white-space:pre-wrap;color:var(--text-secondary);font-style:italic;";
             messagesList.appendChild(li);
             scrollToBottom(messagesList);
             checkScrollPosition(messagesList,scrollBtn,autoScroll);
