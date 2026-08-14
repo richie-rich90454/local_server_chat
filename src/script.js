@@ -2,7 +2,7 @@ import {hljs, escapeHtml, formatMarkdown, highlightMentions} from "./highlight-c
 import {createModal, showChatError, shakeElement, getCurrentTime, scrollToBottom, checkScrollPosition, updateTypingIndicatorUI, wrapSelection, convertToWebP, insertReplyQuote, insertForwardToPrivate, exportChatLog, applyTheme, getSystemTheme, setHighlightTheme} from "./ui-helpers.js";
 import {connectWebSocket} from "./websocket.js";
 import {create2048Game, createChessGame, processCommand, updateDeveloperMode, applyGoldBorder, showSystemMessage, doRandomEasterEgg, getUnlockCount, incrementUnlockCount} from "./games.js";
-import {initFileHandlers, handleFileStart, handleBinaryChunk, handleFileEnd, handleFileCancel} from "./file-handler.js";
+import {initFileHandlers, handleFileStart, handleBinaryChunk, handleFileEnd, handleFileCancel, sendFileChunked, createFileMessageHTML} from "./file-handler.js";
 import QRCode from "qrcode";
 import {generateIdenticon} from "./identicon.js";
 import "./font-preload.css";
@@ -910,8 +910,78 @@ document.addEventListener("DOMContentLoaded",()=>{
     });
     let voiceBtnElem=document.getElementById("voiceBtn");
     if(voiceBtnElem){
+        let mediaRecorder=null;
+        let mediaChunks=[];
+        let voiceStream=null;
+        const voiceFileInput=document.createElement("input");
+        voiceFileInput.type="file";
+        voiceFileInput.accept="audio/*";
+        voiceFileInput.style.display="none";
+        document.body.appendChild(voiceFileInput);
+        function voiceSendComplete(url,fileName,fileSize,mimeType,time){
+            const ip=clientRealIP||"Unknown";
+            const fileHTML=createFileMessageHTML(url,fileName,fileSize,mimeType,currentUser,ip,time,true,escapeHtml);
+            let rawHtml=escapeHtml(currentUser)+" ["+ip+"] ("+time+"):<br>"+fileHTML;
+            let li=document.createElement("li");
+            li.innerHTML=rawHtml;
+            li.classList.add("userMessage");
+            messagesList.appendChild(li);
+            scrollToBottom(messagesList);
+            checkScrollPosition(messagesList,scrollBtn,autoScroll);
+        }
+        function voiceFallbackToFile(){
+            showChatError(chatErrorDiv,"Mic is blocked on plain HTTP. Pick an audio file instead.");
+            voiceFileInput.click();
+        }
+        async function startVoiceRecording(){
+            try{
+                voiceStream=await navigator.mediaDevices.getUserMedia({audio:true});
+                mediaChunks=[];
+                mediaRecorder=new MediaRecorder(voiceStream);
+                mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)mediaChunks.push(e.data);};
+                mediaRecorder.onstop=async()=>{
+                    voiceBtnElem.style.background="";
+                    const type=mediaRecorder.mimeType||"audio/webm";
+                    const blob=new Blob(mediaChunks,{type});
+                    const file=new File([blob],"voice_"+Date.now()+".webm",{type});
+                    voiceStream.getTracks().forEach(t=>t.stop());
+                    voiceStream=null;
+                    if(socket&&socket.readyState===WebSocket.OPEN){
+                        await sendFileChunked(file,socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,voiceSendComplete);
+                    }
+                    else{
+                        showChatError(chatErrorDiv,"Connection lost.");
+                    }
+                };
+                mediaRecorder.start();
+                voiceBtnElem.style.background="red";
+            }
+            catch(err){
+                voiceStream=null;
+                voiceFallbackToFile();
+            }
+        }
+        voiceFileInput.addEventListener("change",async()=>{
+            const file=voiceFileInput.files[0];
+            voiceFileInput.value="";
+            if(!file)return;
+            if(socket&&socket.readyState===WebSocket.OPEN){
+                await sendFileChunked(file,socket,currentUser,clientRealIP,getCurrentTime,showChatError,chatErrorDiv,voiceSendComplete);
+            }
+            else{
+                showChatError(chatErrorDiv,"Connection lost.");
+            }
+        });
         voiceBtnElem.addEventListener("click",()=>{
-            showChatError(chatErrorDiv,"Voice recording requires HTTPS. Use localhost or enable microphone flag.");
+            if(mediaRecorder&&mediaRecorder.state==="recording"){
+                mediaRecorder.stop();
+                return;
+            }
+            if(window.isSecureContext===false||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+                voiceFallbackToFile();
+                return;
+            }
+            startVoiceRecording();
         });
     }
     window.addEventListener("beforeunload",(e)=>{
