@@ -591,6 +591,9 @@ document.addEventListener("DOMContentLoaded",()=>{
                 reconnectAttempts=0;
                 socket.send(JSON.stringify({type:"join",username:currentUser}));
                 socket.send(JSON.stringify({type:"getRooms"}));
+                if(currentRoom&&currentRoom!=="General"){
+                    socket.send(JSON.stringify({type:"joinRoom",room:currentRoom}));
+                }
                 setTimeout(()=>{
                     if(socket&&socket.readyState===WebSocket.OPEN){
                         socket.send(JSON.stringify({type:"getUsers"}));
